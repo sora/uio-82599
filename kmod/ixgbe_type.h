@@ -920,16 +920,7 @@ struct ixgbe_phy_operations {
         s32 (*reset)(struct ixgbe_hw *);
         s32 (*read_reg)(struct ixgbe_hw *, u32, u32, u16 *);
         s32 (*write_reg)(struct ixgbe_hw *, u32, u32, u16);
-        s32 (*read_reg_mdi)(struct ixgbe_hw *, u32, u32, u16 *);
-        s32 (*write_reg_mdi)(struct ixgbe_hw *, u32, u32, u16);
-        s32 (*setup_link_speed)(struct ixgbe_hw *, u32, bool);
-        s32 (*get_firmware_version)(struct ixgbe_hw *, u16 *);
-        s32 (*read_i2c_byte)(struct ixgbe_hw *, u8, u8, u8 *);
-        s32 (*write_i2c_byte)(struct ixgbe_hw *, u8, u8, u8);
-        s32 (*read_i2c_sff8472)(struct ixgbe_hw *, u8 , u8 *);
         s32 (*read_i2c_eeprom)(struct ixgbe_hw *, u8 , u8 *);
-        s32 (*write_i2c_eeprom)(struct ixgbe_hw *, u8, u8);
-        void (*i2c_bus_clear)(struct ixgbe_hw *);
         s32 (*check_overtemp)(struct ixgbe_hw *);
 };
 

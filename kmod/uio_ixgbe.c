@@ -232,6 +232,7 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
 
 	pci_set_drvdata(pdev, ud);
 	ud->pdev = pdev;
+	hw->back = ud;
 
 	pci_set_master(pdev);
 	pci_save_state(pdev);
