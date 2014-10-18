@@ -35,9 +35,16 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw){
         struct ixgbe_eeprom_info *eeprom = &hw->eeprom;
 
         /* PHY */
-        phy->ops.identify = &ixgbe_identify_phy_82599;						//used
-        phy->ops.init = &ixgbe_init_phy_ops_82599;						//used
-        phy->ops.reset = &ixgbe_reset_phy_generic;						//used
+        phy->ops.identify = &ixgbe_identify_phy_82599;
+	phy->ops.identify_sfp = &ixgbe_identify_sfp_module_generic;
+        phy->ops.init = &ixgbe_init_phy_ops_82599;
+        phy->ops.reset = &ixgbe_reset_phy_generic;
+	phy->ops.read_reg = &ixgbe_read_phy_reg_generic;
+	phy->ops.read_reg_mdi = &ixgbe_read_phy_reg_mdi;
+	phy->ops.write_reg = &ixgbe_write_phy_reg_generic;
+	phy->ops.write_reg_mdi = &ixgbe_write_phy_reg_mdi;
+	phy->ops.read_i2c_eeprom = &ixgbe_read_i2c_eeprom_generic;
+	phy->ops.read_i2c_byte = &ixgbe_read_i2c_byte_generic;
 
         /* MAC */
 	mac->ops.init_hw = &ixgbe_init_hw_generic;						//used

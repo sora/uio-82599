@@ -919,9 +919,11 @@ struct ixgbe_phy_operations {
         s32 (*init)(struct ixgbe_hw *);
         s32 (*reset)(struct ixgbe_hw *);
         s32 (*read_reg)(struct ixgbe_hw *, u32, u32, u16 *);
+	s32 (*read_reg_mdi)(struct ixgbe_hw *, u32, u32, u16 *);
         s32 (*write_reg)(struct ixgbe_hw *, u32, u32, u16);
+	s32 (*write_reg_mdi)(struct ixgbe_hw *, u32, u32, u16);
         s32 (*read_i2c_eeprom)(struct ixgbe_hw *, u8 , u8 *);
-        s32 (*check_overtemp)(struct ixgbe_hw *);
+	s32 (*read_i2c_byte)(struct ixgbe_hw *, u8, u8, u8 *);
 };
 
 struct ixgbe_eeprom_operations {
@@ -991,7 +993,6 @@ struct ixgbe_phy_info {
         enum ixgbe_media_type media_type;
         bool reset_disable;
         u32 autoneg_advertised;
-        bool reset_if_overtemp;
         bool qsfp_shared_i2c_bus;
 };
 

@@ -24,6 +24,19 @@
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
 
+static void ixgbe_i2c_start(struct ixgbe_hw *hw);
+static void ixgbe_i2c_stop(struct ixgbe_hw *hw);
+static s32 ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data);
+static s32 ixgbe_clock_out_i2c_byte(struct ixgbe_hw *hw, u8 data);
+static s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw);
+static void ixgbe_raise_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl);
+static void ixgbe_lower_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl);
+static s32 ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data);
+static s32 ixgbe_clock_out_i2c_bit(struct ixgbe_hw *hw, bool data);
+static bool ixgbe_get_i2c_data(u32 *i2cctl);
+static s32 ixgbe_set_i2c_data(struct ixgbe_hw *hw, u32 *i2cctl, bool data);
+static void ixgbe_i2c_bus_clear(struct ixgbe_hw *hw);
+
 s32 ixgbe_reset_phy_generic(struct ixgbe_hw *hw){
         u32 i;
         u16 ctrl = 0;
@@ -33,11 +46,6 @@ s32 ixgbe_reset_phy_generic(struct ixgbe_hw *hw){
                 status = ixgbe_identify_phy_generic(hw);
 
         if (status != 0 || hw->phy.type == ixgbe_phy_none)
-                goto out;
-
-        /* Don't reset PHY if it's shut down due to overtemp. */
-        if (!hw->phy.reset_if_overtemp &&
-            (IXGBE_ERR_OVERTEMP == hw->phy.ops.check_overtemp(hw)))
                 goto out;
 
         /*
@@ -387,4 +395,520 @@ enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id)
         }
 
         return phy_type;
+}
+
+s32 ixgbe_read_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
+                               u32 device_type, u16 *phy_data)
+{
+        s32 status;
+        u16 gssr;
+
+        if (IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_LAN_ID_1)
+                gssr = IXGBE_GSSR_PHY1_SM;
+        else
+                gssr = IXGBE_GSSR_PHY0_SM;
+
+        if (hw->mac.ops.acquire_swfw_sync(hw, gssr) == 0) {
+                status = ixgbe_read_phy_reg_mdi(hw, reg_addr, device_type,
+                                                phy_data);
+                hw->mac.ops.release_swfw_sync(hw, gssr);
+        } else {
+                status = IXGBE_ERR_SWFW_SYNC;
+        }
+
+        return status;
+}
+
+s32 ixgbe_write_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
+                                u32 device_type, u16 phy_data)
+{
+        s32 status;
+        u16 gssr;
+
+        if (IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_LAN_ID_1)
+                gssr = IXGBE_GSSR_PHY1_SM;
+        else
+                gssr = IXGBE_GSSR_PHY0_SM;
+
+        if (hw->mac.ops.acquire_swfw_sync(hw, gssr) == 0) {
+                status = ixgbe_write_phy_reg_mdi(hw, reg_addr, device_type,
+                                                 phy_data);
+                hw->mac.ops.release_swfw_sync(hw, gssr);
+        } else {
+                status = IXGBE_ERR_SWFW_SYNC;
+        }
+
+        return status;
+}
+
+s32 ixgbe_read_i2c_eeprom_generic(struct ixgbe_hw *hw, u8 byte_offset,
+                                  u8 *eeprom_data)
+{
+        return hw->phy.ops.read_i2c_byte(hw, byte_offset,
+                                         IXGBE_I2C_EEPROM_DEV_ADDR,
+                                         eeprom_data);
+}
+
+s32 ixgbe_read_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr, u32 device_type,
+                       u16 *phy_data)
+{
+        u32 i, data, command;
+
+        /* Setup and write the address cycle command */
+        command = ((reg_addr << IXGBE_MSCA_NP_ADDR_SHIFT)  |
+                   (device_type << IXGBE_MSCA_DEV_TYPE_SHIFT) |
+                   (hw->phy.addr << IXGBE_MSCA_PHY_ADDR_SHIFT) |
+                   (IXGBE_MSCA_ADDR_CYCLE | IXGBE_MSCA_MDI_COMMAND));
+
+        IXGBE_WRITE_REG(hw, IXGBE_MSCA, command);
+
+        /*
+         * Check every 10 usec to see if the address cycle completed.
+         * The MDI Command bit will clear when the operation is
+         * complete
+         */
+        for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
+                udelay(10);
+
+                command = IXGBE_READ_REG(hw, IXGBE_MSCA);
+                if ((command & IXGBE_MSCA_MDI_COMMAND) == 0)
+                                break;
+        }
+
+
+        if ((command & IXGBE_MSCA_MDI_COMMAND) != 0) {
+                return IXGBE_ERR_PHY;
+        }
+
+        /*
+         * Address cycle complete, setup and write the read
+         * command
+         */
+        command = ((reg_addr << IXGBE_MSCA_NP_ADDR_SHIFT)  |
+                   (device_type << IXGBE_MSCA_DEV_TYPE_SHIFT) |
+                   (hw->phy.addr << IXGBE_MSCA_PHY_ADDR_SHIFT) |
+                   (IXGBE_MSCA_READ | IXGBE_MSCA_MDI_COMMAND));
+
+        IXGBE_WRITE_REG(hw, IXGBE_MSCA, command);
+
+        /*
+         * Check every 10 usec to see if the address cycle
+         * completed. The MDI Command bit will clear when the
+         * operation is complete
+         */
+        for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
+                udelay(10);
+
+                command = IXGBE_READ_REG(hw, IXGBE_MSCA);
+                if ((command & IXGBE_MSCA_MDI_COMMAND) == 0)
+                        break;
+        }
+
+        if ((command & IXGBE_MSCA_MDI_COMMAND) != 0) {
+                return IXGBE_ERR_PHY;
+        }
+
+        /*
+         * Read operation is complete.  Get the data
+         * from MSRWD
+         */
+        data = IXGBE_READ_REG(hw, IXGBE_MSRWD);
+        data >>= IXGBE_MSRWD_READ_DATA_SHIFT;
+        *phy_data = (u16)(data);
+
+        return 0;
+}
+
+s32 ixgbe_write_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr,
+                                u32 device_type, u16 phy_data)
+{
+        u32 i, command;
+
+        /* Put the data in the MDI single read and write data register*/
+        IXGBE_WRITE_REG(hw, IXGBE_MSRWD, (u32)phy_data);
+
+        /* Setup and write the address cycle command */
+        command = ((reg_addr << IXGBE_MSCA_NP_ADDR_SHIFT)  |
+                   (device_type << IXGBE_MSCA_DEV_TYPE_SHIFT) |
+                   (hw->phy.addr << IXGBE_MSCA_PHY_ADDR_SHIFT) |
+                   (IXGBE_MSCA_ADDR_CYCLE | IXGBE_MSCA_MDI_COMMAND));
+
+        IXGBE_WRITE_REG(hw, IXGBE_MSCA, command);
+
+        /*
+         * Check every 10 usec to see if the address cycle completed.
+         * The MDI Command bit will clear when the operation is
+         * complete
+         */
+        for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
+                udelay(10);
+
+                command = IXGBE_READ_REG(hw, IXGBE_MSCA);
+                if ((command & IXGBE_MSCA_MDI_COMMAND) == 0)
+                        break;
+        }
+
+        if ((command & IXGBE_MSCA_MDI_COMMAND) != 0) {
+                return IXGBE_ERR_PHY;
+        }
+
+        /*
+         * Address cycle complete, setup and write the write
+         * command
+         */
+        command = ((reg_addr << IXGBE_MSCA_NP_ADDR_SHIFT)  |
+                   (device_type << IXGBE_MSCA_DEV_TYPE_SHIFT) |
+                   (hw->phy.addr << IXGBE_MSCA_PHY_ADDR_SHIFT) |
+                   (IXGBE_MSCA_WRITE | IXGBE_MSCA_MDI_COMMAND));
+
+        IXGBE_WRITE_REG(hw, IXGBE_MSCA, command);
+
+        /*
+         * Check every 10 usec to see if the address cycle
+         * completed. The MDI Command bit will clear when the
+         * operation is complete
+         */
+        for (i = 0; i < IXGBE_MDIO_COMMAND_TIMEOUT; i++) {
+                udelay(10);
+
+                command = IXGBE_READ_REG(hw, IXGBE_MSCA);
+                if ((command & IXGBE_MSCA_MDI_COMMAND) == 0)
+                        break;
+        }
+
+        if ((command & IXGBE_MSCA_MDI_COMMAND) != 0) {
+                return IXGBE_ERR_PHY;
+        }
+
+        return 0;
+}
+
+s32 ixgbe_read_i2c_byte_generic(struct ixgbe_hw *hw, u8 byte_offset,
+                                u8 dev_addr, u8 *data)
+{
+        s32 status = 0;
+        u32 max_retry = 10;
+        u32 retry = 0;
+        u16 swfw_mask = 0;
+        bool nack = 1;
+        *data = 0;
+
+        if (IXGBE_READ_REG(hw, IXGBE_STATUS) & IXGBE_STATUS_LAN_ID_1)
+                swfw_mask = IXGBE_GSSR_PHY1_SM;
+        else
+                swfw_mask = IXGBE_GSSR_PHY0_SM;
+
+        do {
+                if (hw->mac.ops.acquire_swfw_sync(hw, swfw_mask)
+                    != 0) {
+                        status = IXGBE_ERR_SWFW_SYNC;
+                        goto read_byte_out;
+                }
+
+                ixgbe_i2c_start(hw);
+
+                /* Device Address and write indication */
+                status = ixgbe_clock_out_i2c_byte(hw, dev_addr);
+                if (status != 0)
+                        goto fail;
+
+                status = ixgbe_get_i2c_ack(hw);
+                if (status != 0)
+                        goto fail;
+
+                status = ixgbe_clock_out_i2c_byte(hw, byte_offset);
+                if (status != 0)
+                        goto fail;
+
+                status = ixgbe_get_i2c_ack(hw);
+                if (status != 0)
+                        goto fail;
+
+                ixgbe_i2c_start(hw);
+
+                /* Device Address and read indication */
+                status = ixgbe_clock_out_i2c_byte(hw, (dev_addr | 0x1));
+                if (status != 0)
+                        goto fail;
+
+                status = ixgbe_get_i2c_ack(hw);
+                if (status != 0)
+                        goto fail;
+
+                status = ixgbe_clock_in_i2c_byte(hw, data);
+                if (status != 0)
+                        goto fail;
+
+                status = ixgbe_clock_out_i2c_bit(hw, nack);
+                if (status != 0)
+                        goto fail;
+
+                ixgbe_i2c_stop(hw);
+                break;
+
+fail:
+                ixgbe_i2c_bus_clear(hw);
+                hw->mac.ops.release_swfw_sync(hw, swfw_mask);
+                msleep(100);
+                retry++;
+        } while (retry < max_retry);
+
+        hw->mac.ops.release_swfw_sync(hw, swfw_mask);
+
+read_byte_out:
+        return status;
+}
+
+static void ixgbe_i2c_start(struct ixgbe_hw *hw)
+{
+        u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+
+        /* Start condition must begin with data and clock high */
+        ixgbe_set_i2c_data(hw, &i2cctl, 1);
+        ixgbe_raise_i2c_clk(hw, &i2cctl);
+
+        /* Setup time for start condition (4.7us) */
+        udelay(IXGBE_I2C_T_SU_STA);
+
+        ixgbe_set_i2c_data(hw, &i2cctl, 0);
+
+        /* Hold time for start condition (4us) */
+        udelay(IXGBE_I2C_T_HD_STA);
+
+        ixgbe_lower_i2c_clk(hw, &i2cctl);
+
+        /* Minimum low period of clock is 4.7 us */
+        udelay(IXGBE_I2C_T_LOW);
+
+}
+
+static void ixgbe_i2c_stop(struct ixgbe_hw *hw)
+{
+        u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+
+        /* Stop condition must begin with data low and clock high */
+        ixgbe_set_i2c_data(hw, &i2cctl, 0);
+        ixgbe_raise_i2c_clk(hw, &i2cctl);
+
+        /* Setup time for stop condition (4us) */
+        udelay(IXGBE_I2C_T_SU_STO);
+
+        ixgbe_set_i2c_data(hw, &i2cctl, 1);
+
+        /* bus free time between stop and start (4.7us)*/
+        udelay(IXGBE_I2C_T_BUF);
+}
+
+static s32 ixgbe_clock_in_i2c_byte(struct ixgbe_hw *hw, u8 *data)
+{
+        s32 i;
+        bool bit = 0;
+
+        for (i = 7; i >= 0; i--) {
+                ixgbe_clock_in_i2c_bit(hw, &bit);
+                *data |= bit << i;
+        }
+
+        return 0;
+}
+
+static s32 ixgbe_clock_out_i2c_byte(struct ixgbe_hw *hw, u8 data)
+{
+        s32 status = 0;
+        s32 i;
+        u32 i2cctl;
+        bool bit;
+
+        for (i = 7; i >= 0; i--) {
+                bit = (data >> i) & 0x1;
+                status = ixgbe_clock_out_i2c_bit(hw, bit);
+
+                if (status != 0)
+                        break;
+        }
+
+        /* Release SDA line (set high) */
+        i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+        i2cctl |= IXGBE_I2C_DATA_OUT;
+        IXGBE_WRITE_REG(hw, IXGBE_I2CCTL, i2cctl);
+        IXGBE_WRITE_FLUSH(hw);
+
+        return status;
+}
+
+static s32 ixgbe_get_i2c_ack(struct ixgbe_hw *hw)
+{
+        s32 status = 0;
+        u32 i = 0;
+        u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+        u32 timeout = 10;
+        bool ack = 1;
+
+        ixgbe_raise_i2c_clk(hw, &i2cctl);
+
+
+        /* Minimum high period of clock is 4us */
+        udelay(IXGBE_I2C_T_HIGH);
+
+        /* Poll for ACK.  Note that ACK in I2C spec is
+         * transition from 1 to 0 */
+        for (i = 0; i < timeout; i++) {
+                i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+                ack = ixgbe_get_i2c_data(&i2cctl);
+
+                udelay(1);
+                if (ack == 0)
+                        break;
+        }
+
+        if (ack == 1) {
+                status = IXGBE_ERR_I2C;
+        }
+
+        ixgbe_lower_i2c_clk(hw, &i2cctl);
+
+        /* Minimum low period of clock is 4.7 us */
+        udelay(IXGBE_I2C_T_LOW);
+
+        return status;
+}
+
+static void ixgbe_raise_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl)
+{
+        u32 i = 0;
+        u32 timeout = IXGBE_I2C_CLOCK_STRETCHING_TIMEOUT;
+        u32 i2cctl_r = 0;
+
+        for (i = 0; i < timeout; i++) {
+                *i2cctl |= IXGBE_I2C_CLK_OUT;
+
+                IXGBE_WRITE_REG(hw, IXGBE_I2CCTL, *i2cctl);
+                IXGBE_WRITE_FLUSH(hw);
+                /* SCL rise time (1000ns) */
+                udelay(IXGBE_I2C_T_RISE);
+
+                i2cctl_r = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+                if (i2cctl_r & IXGBE_I2C_CLK_IN)
+                        break;
+        }
+}
+
+static void ixgbe_lower_i2c_clk(struct ixgbe_hw *hw, u32 *i2cctl)
+{
+
+        *i2cctl &= ~IXGBE_I2C_CLK_OUT;
+
+        IXGBE_WRITE_REG(hw, IXGBE_I2CCTL, *i2cctl);
+        IXGBE_WRITE_FLUSH(hw);
+
+        /* SCL fall time (300ns) */
+        udelay(IXGBE_I2C_T_FALL);
+}
+
+static s32 ixgbe_clock_in_i2c_bit(struct ixgbe_hw *hw, bool *data)
+{
+        u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+
+        ixgbe_raise_i2c_clk(hw, &i2cctl);
+
+        /* Minimum high period of clock is 4us */
+        udelay(IXGBE_I2C_T_HIGH);
+
+        i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+        *data = ixgbe_get_i2c_data(&i2cctl);
+
+        ixgbe_lower_i2c_clk(hw, &i2cctl);
+
+        /* Minimum low period of clock is 4.7 us */
+        udelay(IXGBE_I2C_T_LOW);
+
+        return 0;
+}
+
+static s32 ixgbe_clock_out_i2c_bit(struct ixgbe_hw *hw, bool data)
+{
+        s32 status;
+        u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+
+        status = ixgbe_set_i2c_data(hw, &i2cctl, data);
+        if (status == 0) {
+                ixgbe_raise_i2c_clk(hw, &i2cctl);
+
+                /* Minimum high period of clock is 4us */
+                udelay(IXGBE_I2C_T_HIGH);
+
+                ixgbe_lower_i2c_clk(hw, &i2cctl);
+
+                /* Minimum low period of clock is 4.7 us.
+                 * This also takes care of the data hold time.
+                 */
+                udelay(IXGBE_I2C_T_LOW);
+        } else {
+                status = IXGBE_ERR_I2C;
+        }
+
+        return status;
+}
+
+static s32 ixgbe_set_i2c_data(struct ixgbe_hw *hw, u32 *i2cctl, bool data)
+{
+        s32 status = 0;
+
+        if (data)
+                *i2cctl |= IXGBE_I2C_DATA_OUT;
+        else
+                *i2cctl &= ~IXGBE_I2C_DATA_OUT;
+
+        IXGBE_WRITE_REG(hw, IXGBE_I2CCTL, *i2cctl);
+        IXGBE_WRITE_FLUSH(hw);
+
+        /* Data rise/fall (1000ns/300ns) and set-up time (250ns) */
+        udelay(IXGBE_I2C_T_RISE + IXGBE_I2C_T_FALL + IXGBE_I2C_T_SU_DATA);
+
+        /* Verify data was set correctly */
+        *i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+        if (data != ixgbe_get_i2c_data(i2cctl)) {
+                status = IXGBE_ERR_I2C;
+        }
+
+        return status;
+}
+
+static bool ixgbe_get_i2c_data(u32 *i2cctl)
+{
+        bool data;
+
+        if (*i2cctl & IXGBE_I2C_DATA_IN)
+                data = 1;
+        else
+                data = 0;
+
+        return data;
+}
+
+static void ixgbe_i2c_bus_clear(struct ixgbe_hw *hw)
+{
+        u32 i2cctl = IXGBE_READ_REG(hw, IXGBE_I2CCTL);
+        u32 i;
+
+        ixgbe_i2c_start(hw);
+
+        ixgbe_set_i2c_data(hw, &i2cctl, 1);
+
+        for (i = 0; i < 9; i++) {
+                ixgbe_raise_i2c_clk(hw, &i2cctl);
+
+                /* Min high period of clock is 4us */
+                udelay(IXGBE_I2C_T_HIGH);
+
+                ixgbe_lower_i2c_clk(hw, &i2cctl);
+
+                /* Min low period of clock is 4.7us*/
+                udelay(IXGBE_I2C_T_LOW);
+        }
+
+        ixgbe_i2c_start(hw);
+
+        /* Put the i2c bus back to default state */
+        ixgbe_i2c_stop(hw);
 }

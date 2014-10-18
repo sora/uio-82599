@@ -252,9 +252,7 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
                 goto err_sw_init;
 
         /* reset_hw fills in the perm_addr as well */
-        hw->phy.reset_if_overtemp = true;
         err = hw->mac.ops.reset_hw(hw);
-        hw->phy.reset_if_overtemp = false;
 
         if (err == IXGBE_ERR_SFP_NOT_SUPPORTED) {
                 IXGBE_ERR("failed to load because an unsupported SFP+ or QSFP "
