@@ -26,30 +26,6 @@
 #define IXGBE_TAF_SYM_PAUSE             0x400
 #define IXGBE_TAF_ASM_PAUSE             0x800
 
-/* I2C */
-#define IXGBE_I2C_EEPROM_DEV_ADDR       0xA0
-#define IXGBE_I2C_EEPROM_DEV_ADDR2      0xA2
-#define IXGBE_I2C_EEPROM_BANK_LEN       0xFF
-
-/* I2CCTL Bit Masks */
-#define IXGBE_I2C_CLK_IN        0x00000001
-#define IXGBE_I2C_CLK_OUT       0x00000002
-#define IXGBE_I2C_DATA_IN       0x00000004
-#define IXGBE_I2C_DATA_OUT      0x00000008
-#define IXGBE_I2C_CLOCK_STRETCHING_TIMEOUT      500
-
-/* I2C SDA and SCL timing parameters for standard mode */
-#define IXGBE_I2C_T_HD_STA      4
-#define IXGBE_I2C_T_LOW         5
-#define IXGBE_I2C_T_HIGH        4
-#define IXGBE_I2C_T_SU_STA      5
-#define IXGBE_I2C_T_HD_DATA     5
-#define IXGBE_I2C_T_SU_DATA     1
-#define IXGBE_I2C_T_RISE        1
-#define IXGBE_I2C_T_FALL        1
-#define IXGBE_I2C_T_SU_STO      4
-#define IXGBE_I2C_T_BUF         5
-
 /* MSCA Bit Masks */
 #define IXGBE_MSCA_NP_ADDR_MASK         0x0000FFFF /* MDI Addr (new prot) */
 #define IXGBE_MSCA_NP_ADDR_SHIFT        0
@@ -85,16 +61,11 @@ s32 ixgbe_identify_module_generic(struct ixgbe_hw *hw);
 bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr);
 s32 ixgbe_get_phy_id(struct ixgbe_hw *hw);
 enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id);
-s32 ixgbe_identify_sfp_module_generic(struct ixgbe_hw *hw);
 s32 ixgbe_read_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
                                u32 device_type, u16 *phy_data);
 s32 ixgbe_write_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
                                 u32 device_type, u16 phy_data);
-s32 ixgbe_read_i2c_eeprom_generic(struct ixgbe_hw *hw, u8 byte_offset,
-                                  u8 *eeprom_data);
 s32 ixgbe_read_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr, u32 device_type,
                        u16 *phy_data);
 s32 ixgbe_write_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr,
                                 u32 device_type, u16 phy_data);
-s32 ixgbe_read_i2c_byte_generic(struct ixgbe_hw *hw, u8 byte_offset,
-                                u8 dev_addr, u8 *data);

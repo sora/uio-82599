@@ -36,15 +36,12 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw){
 
         /* PHY */
         phy->ops.identify = &ixgbe_identify_phy_82599;
-	phy->ops.identify_sfp = &ixgbe_identify_sfp_module_generic;
         phy->ops.init = &ixgbe_init_phy_ops_82599;
         phy->ops.reset = &ixgbe_reset_phy_generic;
 	phy->ops.read_reg = &ixgbe_read_phy_reg_generic;
 	phy->ops.read_reg_mdi = &ixgbe_read_phy_reg_mdi;
 	phy->ops.write_reg = &ixgbe_write_phy_reg_generic;
 	phy->ops.write_reg_mdi = &ixgbe_write_phy_reg_mdi;
-	phy->ops.read_i2c_eeprom = &ixgbe_read_i2c_eeprom_generic;
-	phy->ops.read_i2c_byte = &ixgbe_read_i2c_byte_generic;
 
         /* MAC */
 	mac->ops.init_hw = &ixgbe_init_hw_generic;						//used
@@ -62,7 +59,6 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw){
         mac->ops.init_rx_addrs = &ixgbe_init_rx_addrs_generic;					//used
 
         /* Link */
-        mac->ops.get_link_capabilities = &ixgbe_get_link_capabilities_82599;			//used
         mac->ops.check_link = &ixgbe_check_mac_link_generic;					//used
         ixgbe_init_mac_link_ops_82599(hw);
 
@@ -672,18 +668,6 @@ out:
 s32 ixgbe_get_link_capabilities_82599(struct ixgbe_hw *hw, u32 *speed, bool *autoneg){
         s32 status = 0;
         u32 autoc = 0;
-
-        /* Check if 1G SFP module. */
-        if (hw->phy.sfp_type == ixgbe_sfp_type_1g_cu_core0 ||
-            hw->phy.sfp_type == ixgbe_sfp_type_1g_cu_core1 ||
-            hw->phy.sfp_type == ixgbe_sfp_type_1g_lx_core0 ||
-            hw->phy.sfp_type == ixgbe_sfp_type_1g_lx_core1 ||
-            hw->phy.sfp_type == ixgbe_sfp_type_1g_sx_core0 ||
-            hw->phy.sfp_type == ixgbe_sfp_type_1g_sx_core1) {
-                *speed = IXGBE_LINK_SPEED_1GB_FULL;
-                *autoneg = true;
-                goto out;
-        }
 
         /*
          * Determine link capabilities based on the stored value of AUTOC,

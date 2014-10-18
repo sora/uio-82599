@@ -865,8 +865,6 @@ struct ixgbe_mac_operations {
         void (*flap_tx_laser)(struct ixgbe_hw *);
         s32 (*setup_link)(struct ixgbe_hw *, u32, bool);
         s32 (*check_link)(struct ixgbe_hw *, u32 *, bool *, bool);
-        s32 (*get_link_capabilities)(struct ixgbe_hw *, u32 *,
-                                     bool *);
 
        /* Packet Buffer manipulation */
         void (*setup_rxpba)(struct ixgbe_hw *, int, u32, int);
@@ -915,15 +913,12 @@ struct ixgbe_mac_operations {
 
 struct ixgbe_phy_operations {
         s32 (*identify)(struct ixgbe_hw *);
-        s32 (*identify_sfp)(struct ixgbe_hw *);
         s32 (*init)(struct ixgbe_hw *);
         s32 (*reset)(struct ixgbe_hw *);
         s32 (*read_reg)(struct ixgbe_hw *, u32, u32, u16 *);
 	s32 (*read_reg_mdi)(struct ixgbe_hw *, u32, u32, u16 *);
         s32 (*write_reg)(struct ixgbe_hw *, u32, u32, u16);
 	s32 (*write_reg_mdi)(struct ixgbe_hw *, u32, u32, u16);
-        s32 (*read_i2c_eeprom)(struct ixgbe_hw *, u8 , u8 *);
-	s32 (*read_i2c_byte)(struct ixgbe_hw *, u8, u8, u8 *);
 };
 
 struct ixgbe_eeprom_operations {
