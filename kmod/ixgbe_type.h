@@ -987,8 +987,6 @@ struct ixgbe_phy_info {
         u32 revision;
         enum ixgbe_media_type media_type;
         bool reset_disable;
-        u32 autoneg_advertised;
-        bool qsfp_shared_i2c_bus;
 };
 
 struct ixgbe_eeprom_info {
