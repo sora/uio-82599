@@ -80,8 +80,10 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw){
                                    IXGBE_FWSM_MODE_MASK) ? true : false;
 
         /* EEPROM */
-        eeprom->ops.read = &ixgbe_read_eeprom_82599;						//used
-        eeprom->ops.validate_checksum = &ixgbe_validate_eeprom_checksum_generic;		//used
+	eeprom->ops.init_params = &ixgbe_init_eeprom_params_generic;
+	eeprom->ops.read = &ixgbe_read_eeprom_82599;
+        eeprom->ops.validate_checksum = &ixgbe_validate_eeprom_checksum_generic;
+        eeprom->ops.calc_checksum = &ixgbe_calc_eeprom_checksum_generic;
 
         return 0;
 }
@@ -544,6 +546,8 @@ static s32 ixgbe_read_eeprom_82599(struct ixgbe_hw *hw, u16 offset, u16 *data){
         /*
          * If EEPROM is detected and can be addressed using 14 bits,
          * use EERD otherwise use bit bang
+	 * (At first time, eeprom->type is ixgbe_eeprom_uninitialized,
+	 * but after that eeprom->type will be ixgbe_eeprom_spi.)
          */
         if ((eeprom->type == ixgbe_eeprom_spi) &&
             (offset <= IXGBE_EERD_MAX_ADDR))

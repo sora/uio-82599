@@ -32,6 +32,8 @@ void ixgbe_release_swfw_sync(struct ixgbe_hw *hw, u16 mask);
 s32 ixgbe_clear_vfta_generic(struct ixgbe_hw *hw);
 s32 ixgbe_clear_hw_cntrs_generic(struct ixgbe_hw *hw);
 void ixgbe_set_lan_id_multi_port_pcie(struct ixgbe_hw *hw);
+s32 ixgbe_init_eeprom_params_generic(struct ixgbe_hw *hw);
+u16 ixgbe_calc_eeprom_checksum_generic(struct ixgbe_hw *hw);
 
 static inline bool IXGBE_REMOVED(void __iomem *addr)
 {

@@ -943,55 +943,51 @@ enum ixgbe_fc_mode {
 
 /* Function pointer table */
 struct ixgbe_mac_operations {
-        s32 (*init_hw)(struct ixgbe_hw *);
-        s32 (*reset_hw)(struct ixgbe_hw *);
-        s32 (*start_hw)(struct ixgbe_hw *);
-        s32 (*clear_hw_cntrs)(struct ixgbe_hw *);
-        enum ixgbe_media_type (*get_media_type)(struct ixgbe_hw *);
-        s32 (*get_mac_addr)(struct ixgbe_hw *, u8 *);
-        s32 (*stop_adapter)(struct ixgbe_hw *);
-        void (*set_lan_id)(struct ixgbe_hw *);
-        s32 (*setup_sfp)(struct ixgbe_hw *);
-        s32 (*acquire_swfw_sync)(struct ixgbe_hw *, u16);
-        void (*release_swfw_sync)(struct ixgbe_hw *, u16);
-        s32 (*prot_autoc_read)(struct ixgbe_hw *, bool *, u32 *);
-        s32 (*prot_autoc_write)(struct ixgbe_hw *, u32, bool);
+	s32 (*init_hw)(struct ixgbe_hw *);
+	s32 (*reset_hw)(struct ixgbe_hw *);
+	s32 (*start_hw)(struct ixgbe_hw *);
+	s32 (*clear_hw_cntrs)(struct ixgbe_hw *);
+	enum ixgbe_media_type (*get_media_type)(struct ixgbe_hw *);
+	s32 (*get_mac_addr)(struct ixgbe_hw *, u8 *);
+	s32 (*stop_adapter)(struct ixgbe_hw *);
+	void (*set_lan_id)(struct ixgbe_hw *);
+	s32 (*setup_sfp)(struct ixgbe_hw *);
+	s32 (*acquire_swfw_sync)(struct ixgbe_hw *, u16);
+	void (*release_swfw_sync)(struct ixgbe_hw *, u16);
+	s32 (*prot_autoc_read)(struct ixgbe_hw *, bool *, u32 *);
+	s32 (*prot_autoc_write)(struct ixgbe_hw *, u32, bool);
 
-        /* Link */
-        void (*disable_tx_laser)(struct ixgbe_hw *);
-        void (*enable_tx_laser)(struct ixgbe_hw *);
-        void (*flap_tx_laser)(struct ixgbe_hw *);
-        s32 (*setup_link)(struct ixgbe_hw *, u32, bool);
-        s32 (*check_link)(struct ixgbe_hw *, u32 *, bool *, bool);
+	/* Link */
+	void (*disable_tx_laser)(struct ixgbe_hw *);
+	void (*enable_tx_laser)(struct ixgbe_hw *);
+	void (*flap_tx_laser)(struct ixgbe_hw *);
+	s32 (*setup_link)(struct ixgbe_hw *, u32, bool);
+	s32 (*check_link)(struct ixgbe_hw *, u32 *, bool *, bool);
 
-        /* RAR, Multicast, VLAN */
-        s32 (*set_rar)(struct ixgbe_hw *, u32, u8 *, u32, u32);
-        s32 (*init_rx_addrs)(struct ixgbe_hw *);
-        s32 (*clear_vfta)(struct ixgbe_hw *);
+	/* RAR, Multicast, VLAN */
+	s32 (*set_rar)(struct ixgbe_hw *, u32, u8 *, u32, u32);
+	s32 (*init_rx_addrs)(struct ixgbe_hw *);
+	s32 (*clear_vfta)(struct ixgbe_hw *);
 
-        /* Manageability interface */
-        s32 (*set_fw_drv_ver)(struct ixgbe_hw *, u8, u8, u8, u8);
+	/* Manageability interface */
+	s32 (*set_fw_drv_ver)(struct ixgbe_hw *, u8, u8, u8, u8);
 };
 
 struct ixgbe_phy_operations {
-        s32 (*identify)(struct ixgbe_hw *);
-        s32 (*init)(struct ixgbe_hw *);
-        s32 (*reset)(struct ixgbe_hw *);
-        s32 (*read_reg)(struct ixgbe_hw *, u32, u32, u16 *);
+	s32 (*identify)(struct ixgbe_hw *);
+	s32 (*init)(struct ixgbe_hw *);
+	s32 (*reset)(struct ixgbe_hw *);
+	s32 (*read_reg)(struct ixgbe_hw *, u32, u32, u16 *);
 	s32 (*read_reg_mdi)(struct ixgbe_hw *, u32, u32, u16 *);
-        s32 (*write_reg)(struct ixgbe_hw *, u32, u32, u16);
+	s32 (*write_reg)(struct ixgbe_hw *, u32, u32, u16);
 	s32 (*write_reg_mdi)(struct ixgbe_hw *, u32, u32, u16);
 };
 
 struct ixgbe_eeprom_operations {
-        s32 (*init_params)(struct ixgbe_hw *);
-        s32 (*read)(struct ixgbe_hw *, u16, u16 *);
-        s32 (*read_buffer)(struct ixgbe_hw *, u16, u16, u16 *);
-        s32 (*write)(struct ixgbe_hw *, u16, u16);
-        s32 (*write_buffer)(struct ixgbe_hw *, u16, u16, u16 *);
-        s32 (*validate_checksum)(struct ixgbe_hw *, u16 *);
-        s32 (*update_checksum)(struct ixgbe_hw *);
-        u16 (*calc_checksum)(struct ixgbe_hw *);
+	s32 (*init_params)(struct ixgbe_hw *);
+	s32 (*read)(struct ixgbe_hw *, u16, u16 *);
+	s32 (*validate_checksum)(struct ixgbe_hw *, u16 *);
+	u16 (*calc_checksum)(struct ixgbe_hw *);
 };
 
 #define IXGBE_FLAGS_DOUBLE_RESET_REQUIRED       0x01

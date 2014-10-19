@@ -1512,3 +1512,83 @@ static void ixgbe_release_eeprom_semaphore(struct ixgbe_hw *hw)
         IXGBE_WRITE_REG(hw, IXGBE_SWSM, swsm);
         IXGBE_WRITE_FLUSH(hw);
 }
+
+s32 ixgbe_init_eeprom_params_generic(struct ixgbe_hw *hw)
+{
+        struct ixgbe_eeprom_info *eeprom = &hw->eeprom;
+        u32 eec;
+        u16 eeprom_size;
+
+        if (eeprom->type == ixgbe_eeprom_uninitialized) {
+                eeprom->type = ixgbe_eeprom_none;
+                /* Set default semaphore delay to 10ms which is a well
+                 * tested value */
+                eeprom->semaphore_delay = 10;
+                /* Clear EEPROM page size, it will be initialized as needed */
+                eeprom->word_page_size = 0;
+
+                /*
+                 * Check for EEPROM present first.
+                 * If not present leave as none
+                 */
+                eec = IXGBE_READ_REG(hw, IXGBE_EEC);
+                if (eec & IXGBE_EEC_PRES) {
+                        eeprom->type = ixgbe_eeprom_spi;
+
+                        /*
+                         * SPI EEPROM is assumed here.  This code would need to
+                         * change if a future EEPROM is not SPI.
+                         */
+                        eeprom_size = (u16)((eec & IXGBE_EEC_SIZE) >>
+                                            IXGBE_EEC_SIZE_SHIFT);
+                        eeprom->word_size = 1 << (eeprom_size +
+                                             IXGBE_EEPROM_WORD_SIZE_SHIFT);
+                }
+
+                if (eec & IXGBE_EEC_ADDR_SIZE)
+                        eeprom->address_bits = 16;
+                else
+                        eeprom->address_bits = 8;
+        }
+
+        return 0;
+}
+
+u16 ixgbe_calc_eeprom_checksum_generic(struct ixgbe_hw *hw)
+{
+        u16 i;
+        u16 j;
+        u16 checksum = 0;
+        u16 length = 0;
+        u16 pointer = 0;
+        u16 word = 0;
+
+        /* Include 0x0-0x3F in the checksum */
+        for (i = 0; i < IXGBE_EEPROM_CHECKSUM; i++) {
+                if (hw->eeprom.ops.read(hw, i, &word) != 0) {
+                        break;
+                }
+                checksum += word;
+        }
+
+        /* Include all data from pointers except for the fw pointer */
+        for (i = IXGBE_PCIE_ANALOG_PTR; i < IXGBE_FW_PTR; i++) {
+                hw->eeprom.ops.read(hw, i, &pointer);
+
+                /* Make sure the pointer seems valid */
+                if (pointer != 0xFFFF && pointer != 0) {
+                        hw->eeprom.ops.read(hw, pointer, &length);
+
+                        if (length != 0xFFFF && length != 0) {
+                                for (j = pointer+1; j <= pointer+length; j++) {
+                                        hw->eeprom.ops.read(hw, j, &word);
+                                        checksum += word;
+                                }
+                        }
+                }
+        }
+
+        checksum = (u16)IXGBE_EEPROM_SUM - checksum;
+
+        return checksum;
+}
