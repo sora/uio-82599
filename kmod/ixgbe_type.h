@@ -105,6 +105,10 @@ struct ixgbe_hw;
 #define IXGBE_NVM_POLL_READ             0 /* Flag for polling for rd complete */
 #define IXGBE_ETH_LENGTH_OF_ADDRESS     6
 
+/* FACTPS */
+#define IXGBE_FACTPS_MNGCG      0x20000000 /* Manageblility Clock Gated */
+#define IXGBE_FACTPS_LFS        0x40000000 /* LAN Function Select */
+
 /* PCI-E registers */
 #define IXGBE_GCR		0x11000
 #define IXGBE_GTV		0x11004

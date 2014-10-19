@@ -58,6 +58,7 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw){
 	mac->ops.acquire_swfw_sync = &ixgbe_acquire_swfw_sync;
 	mac->ops.release_swfw_sync = &ixgbe_release_swfw_sync;
 	mac->ops.clear_hw_cntrs = &ixgbe_clear_hw_cntrs_generic;
+	mac->ops.set_lan_id = &ixgbe_set_lan_id_multi_port_pcie;
 
         /* RAR, Multicast, VLAN */
 	mac->ops.set_rar = &ixgbe_set_rar_generic;

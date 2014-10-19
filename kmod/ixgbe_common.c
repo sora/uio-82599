@@ -317,6 +317,21 @@ s32 ixgbe_get_mac_addr_generic(struct ixgbe_hw *hw, u8 *mac_addr){
         return 0;
 }
 
+void ixgbe_set_lan_id_multi_port_pcie(struct ixgbe_hw *hw)
+{
+        struct ixgbe_bus_info *bus = &hw->bus;
+        u32 reg;
+
+        reg = IXGBE_READ_REG(hw, IXGBE_STATUS);
+        bus->func = (reg & IXGBE_STATUS_LAN_ID) >> IXGBE_STATUS_LAN_ID_SHIFT;
+        bus->lan_id = bus->func;
+
+        /* check for a port swap */
+        reg = IXGBE_READ_REG(hw, IXGBE_FACTPS);
+        if (reg & IXGBE_FACTPS_LFS)
+                bus->func ^= 0x1;
+}
+
 s32 ixgbe_stop_adapter_generic(struct ixgbe_hw *hw){
         u32 reg_val;
         u16 i;
