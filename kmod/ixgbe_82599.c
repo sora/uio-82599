@@ -30,62 +30,62 @@ static s32 ixgbe_read_eeprom_82599(struct ixgbe_hw *hw, u16 offset, u16 *data);
 static s32 ixgbe_verify_fw_version_82599(struct ixgbe_hw *hw);
 
 s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw){
-        struct ixgbe_mac_info *mac = &hw->mac;
-        struct ixgbe_phy_info *phy = &hw->phy;
-        struct ixgbe_eeprom_info *eeprom = &hw->eeprom;
+	struct ixgbe_mac_info *mac = &hw->mac;
+	struct ixgbe_phy_info *phy = &hw->phy;
+	struct ixgbe_eeprom_info *eeprom = &hw->eeprom;
 
-        /* PHY */
-        phy->ops.identify = &ixgbe_identify_phy_82599;
-        phy->ops.init = &ixgbe_init_phy_ops_82599;
-        phy->ops.reset = &ixgbe_reset_phy_generic;
+	/* PHY */
+	phy->ops.identify = &ixgbe_identify_phy_82599;
+	phy->ops.init = &ixgbe_init_phy_ops_82599;
+	phy->ops.reset = &ixgbe_reset_phy_generic;
 	phy->ops.read_reg = &ixgbe_read_phy_reg_generic;
 	phy->ops.read_reg_mdi = &ixgbe_read_phy_reg_mdi;
 	phy->ops.write_reg = &ixgbe_write_phy_reg_generic;
 	phy->ops.write_reg_mdi = &ixgbe_write_phy_reg_mdi;
 
-        /* MAC */
+	/* MAC */
 	mac->ops.init_hw = &ixgbe_init_hw_generic;
-        mac->ops.reset_hw = &ixgbe_reset_hw_82599;
+	mac->ops.reset_hw = &ixgbe_reset_hw_82599;
 	mac->ops.get_mac_addr = &ixgbe_get_mac_addr_generic;
-        mac->ops.get_media_type = &ixgbe_get_media_type_82599;
+	mac->ops.get_media_type = &ixgbe_get_media_type_82599;
 	mac->ops.setup_link = &ixgbe_setup_mac_link_82599;
 	mac->ops.check_link = &ixgbe_check_mac_link_generic;
-        mac->ops.start_hw = &ixgbe_start_hw_82599;
-        mac->ops.prot_autoc_write = &prot_autoc_write_82599;
+	mac->ops.start_hw = &ixgbe_start_hw_82599;
+	mac->ops.prot_autoc_write = &prot_autoc_write_82599;
 	mac->ops.prot_autoc_read = &prot_autoc_read_82599;
-        mac->ops.stop_adapter = &ixgbe_stop_adapter_generic;
+	mac->ops.stop_adapter = &ixgbe_stop_adapter_generic;
 	mac->ops.setup_sfp = &ixgbe_setup_sfp_modules_82599;
 	mac->ops.acquire_swfw_sync = &ixgbe_acquire_swfw_sync;
 	mac->ops.release_swfw_sync = &ixgbe_release_swfw_sync;
 	mac->ops.clear_hw_cntrs = &ixgbe_clear_hw_cntrs_generic;
 	mac->ops.set_lan_id = &ixgbe_set_lan_id_multi_port_pcie;
 
-        /* RAR, Multicast, VLAN */
+	/* RAR, Multicast, VLAN */
 	mac->ops.set_rar = &ixgbe_set_rar_generic;
-        mac->ops.init_rx_addrs = &ixgbe_init_rx_addrs_generic;
+	mac->ops.init_rx_addrs = &ixgbe_init_rx_addrs_generic;
 	mac->ops.clear_vfta = &ixgbe_clear_vfta_generic;
 
 	/* Manageability interface */
 	mac->ops.set_fw_drv_ver = &ixgbe_set_fw_drv_ver_generic;
 
-        mac->mcft_size          = IXGBE_82599_MC_TBL_SIZE;
-        mac->vft_size           = IXGBE_82599_VFT_TBL_SIZE;
-        mac->num_rar_entries    = IXGBE_82599_RAR_ENTRIES;
-        mac->rx_pb_size         = IXGBE_82599_RX_PB_SIZE;
-        mac->max_rx_queues      = IXGBE_82599_MAX_RX_QUEUES;
-        mac->max_tx_queues      = IXGBE_82599_MAX_TX_QUEUES;
-        mac->max_msix_vectors   = ixgbe_get_pcie_msix_count_generic(hw);
+	mac->mcft_size          = IXGBE_82599_MC_TBL_SIZE;
+	mac->vft_size           = IXGBE_82599_VFT_TBL_SIZE;
+	mac->num_rar_entries    = IXGBE_82599_RAR_ENTRIES;
+	mac->rx_pb_size         = IXGBE_82599_RX_PB_SIZE;
+	mac->max_rx_queues      = IXGBE_82599_MAX_RX_QUEUES;
+	mac->max_tx_queues      = IXGBE_82599_MAX_TX_QUEUES;
+	mac->max_msix_vectors   = ixgbe_get_pcie_msix_count_generic(hw);
 
-        mac->arc_subsystem_valid = (IXGBE_READ_REG(hw, IXGBE_FWSM) &
-                                   IXGBE_FWSM_MODE_MASK) ? true : false;
+	mac->arc_subsystem_valid = (IXGBE_READ_REG(hw, IXGBE_FWSM) &
+					IXGBE_FWSM_MODE_MASK) ? true : false;
 
-        /* EEPROM */
+	/* EEPROM */
 	eeprom->ops.init_params = &ixgbe_init_eeprom_params_generic;
 	eeprom->ops.read = &ixgbe_read_eeprom_82599;
-        eeprom->ops.validate_checksum = &ixgbe_validate_eeprom_checksum_generic;
-        eeprom->ops.calc_checksum = &ixgbe_calc_eeprom_checksum_generic;
+	eeprom->ops.validate_checksum = &ixgbe_validate_eeprom_checksum_generic;
+	eeprom->ops.calc_checksum = &ixgbe_calc_eeprom_checksum_generic;
 
-        return 0;
+	return 0;
 }
 
 s32 ixgbe_reset_hw_82599(struct ixgbe_hw *hw){
