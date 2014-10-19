@@ -14,6 +14,7 @@ void ixgbe_init_mac_link_ops_82599(struct ixgbe_hw *hw);
 void ixgbe_disable_tx_laser_multispeed_fiber(struct ixgbe_hw *hw);
 void ixgbe_enable_tx_laser_multispeed_fiber(struct ixgbe_hw *hw);
 void ixgbe_flap_tx_laser_multispeed_fiber(struct ixgbe_hw *hw);
+s32 prot_autoc_read_82599(struct ixgbe_hw *hw, bool *locked, u32 *reg_val);
 s32 prot_autoc_write_82599(struct ixgbe_hw *hw, u32 autoc, bool locked);
 s32 ixgbe_setup_sfp_modules_82599(struct ixgbe_hw *hw);
 s32 ixgbe_identify_phy_82599(struct ixgbe_hw *hw);

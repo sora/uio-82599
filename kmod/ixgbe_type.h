@@ -407,6 +407,12 @@ struct ixgbe_hw;
 #define IXGBE_ESDP_SDP0_NATIVE  0x00010000 /* SDP0 IO mode */
 #define IXGBE_ESDP_SDP1_NATIVE  0x00020000 /* SDP1 IO mode */
 
+/* SW Semaphore Register bitmasks */
+#define IXGBE_SWSM_SMBI         0x00000001 /* Driver Semaphore bit */
+#define IXGBE_SWSM_SWESMBI      0x00000002 /* FW Semaphore bit */
+#define IXGBE_SWSM_WMNG         0x00000004 /* Wake MNG Clock */
+#define IXGBE_SWFW_REGSMP       0x80000000 /* Register Semaphore bit 31 */
+
 /* SW_FW_SYNC/GSSR definitions */
 #define IXGBE_GSSR_EEP_SM       0x0001
 #define IXGBE_GSSR_PHY0_SM      0x0002
@@ -664,6 +670,102 @@ typedef u32 ixgbe_link_speed;
 /* Number of 100 microseconds we wait for PCI Express master disable */
 #define IXGBE_PCI_MASTER_DISABLE_TIMEOUT        800
 
+/* Stats registers */
+#define IXGBE_CRCERRS   0x04000
+#define IXGBE_ILLERRC   0x04004
+#define IXGBE_ERRBC     0x04008
+#define IXGBE_MSPDC     0x04010
+#define IXGBE_MPC(_i)   (0x03FA0 + ((_i) * 4)) /* 8 of these 3FA0-3FBC*/
+#define IXGBE_MLFC      0x04034
+#define IXGBE_MRFC      0x04038
+#define IXGBE_RLEC      0x04040
+#define IXGBE_LXONTXC   0x03F60
+#define IXGBE_LXONRXC   0x0CF60
+#define IXGBE_LXOFFTXC  0x03F68
+#define IXGBE_LXOFFRXC  0x0CF68
+#define IXGBE_LXONRXCNT         0x041A4
+#define IXGBE_LXOFFRXCNT        0x041A8
+#define IXGBE_PXONRXCNT(_i)     (0x04140 + ((_i) * 4)) /* 8 of these */
+#define IXGBE_PXOFFRXCNT(_i)    (0x04160 + ((_i) * 4)) /* 8 of these */
+#define IXGBE_PXON2OFFCNT(_i)   (0x03240 + ((_i) * 4)) /* 8 of these */
+#define IXGBE_PXONTXC(_i)       (0x03F00 + ((_i) * 4)) /* 8 of these 3F00-3F1C*/
+#define IXGBE_PXONRXC(_i)       (0x0CF00 + ((_i) * 4)) /* 8 of these CF00-CF1C*/
+#define IXGBE_PXOFFTXC(_i)      (0x03F20 + ((_i) * 4)) /* 8 of these 3F20-3F3C*/
+#define IXGBE_PXOFFRXC(_i)      (0x0CF20 + ((_i) * 4)) /* 8 of these CF20-CF3C*/
+#define IXGBE_PRC64             0x0405C
+#define IXGBE_PRC127            0x04060
+#define IXGBE_PRC255            0x04064
+#define IXGBE_PRC511            0x04068
+#define IXGBE_PRC1023           0x0406C
+#define IXGBE_PRC1522           0x04070
+#define IXGBE_GPRC              0x04074
+#define IXGBE_BPRC              0x04078
+#define IXGBE_MPRC              0x0407C
+#define IXGBE_GPTC              0x04080
+#define IXGBE_GORCL             0x04088
+#define IXGBE_GORCH             0x0408C
+#define IXGBE_GOTCL             0x04090
+#define IXGBE_GOTCH             0x04094
+#define IXGBE_RNBC(_i)          (0x03FC0 + ((_i) * 4)) /* 8 of these 3FC0-3FDC*/
+#define IXGBE_RUC               0x040A4
+#define IXGBE_RFC               0x040A8
+#define IXGBE_ROC               0x040AC
+#define IXGBE_RJC               0x040B0
+#define IXGBE_MNGPRC            0x040B4
+#define IXGBE_MNGPDC            0x040B8
+#define IXGBE_MNGPTC            0x0CF90
+#define IXGBE_TORL              0x040C0
+#define IXGBE_TORH              0x040C4
+#define IXGBE_TPR               0x040D0
+#define IXGBE_TPT               0x040D4
+#define IXGBE_PTC64             0x040D8
+#define IXGBE_PTC127            0x040DC
+#define IXGBE_PTC255            0x040E0
+#define IXGBE_PTC511            0x040E4
+#define IXGBE_PTC1023           0x040E8
+#define IXGBE_PTC1522           0x040EC
+#define IXGBE_MPTC              0x040F0
+#define IXGBE_BPTC              0x040F4
+#define IXGBE_XEC               0x04120
+#define IXGBE_SSVPC             0x08780
+#define IXGBE_RQSMR(_i) (0x02300 + ((_i) * 4))
+#define IXGBE_TQSMR(_i) (((_i) <= 7) ? (0x07300 + ((_i) * 4)) : \
+                         (0x08600 + ((_i) * 4)))
+#define IXGBE_TQSM(_i)  (0x08600 + ((_i) * 4))
+#define IXGBE_QPRC(_i)  (0x01030 + ((_i) * 0x40)) /* 16 of these */
+#define IXGBE_QPTC(_i)  (0x06030 + ((_i) * 0x40)) /* 16 of these */
+#define IXGBE_QBRC(_i)  (0x01034 + ((_i) * 0x40)) /* 16 of these */
+#define IXGBE_QBTC(_i)  (0x06034 + ((_i) * 0x40)) /* 16 of these */
+#define IXGBE_QBRC_L(_i)        (0x01034 + ((_i) * 0x40)) /* 16 of these */
+#define IXGBE_QBRC_H(_i)        (0x01038 + ((_i) * 0x40)) /* 16 of these */
+#define IXGBE_QPRDC(_i)         (0x01430 + ((_i) * 0x40)) /* 16 of these */
+#define IXGBE_QBTC_L(_i)        (0x08700 + ((_i) * 0x8)) /* 16 of these */
+#define IXGBE_QBTC_H(_i)        (0x08704 + ((_i) * 0x8)) /* 16 of these */
+#define IXGBE_FCCRC             0x05118 /* Num of Good Eth CRC w/ Bad FC CRC */
+#define IXGBE_FCOERPDC          0x0241C /* FCoE Rx Packets Dropped Count */
+#define IXGBE_FCLAST            0x02424 /* FCoE Last Error Count */
+#define IXGBE_FCOEPRC           0x02428 /* Number of FCoE Packets Received */
+#define IXGBE_FCOEDWRC          0x0242C /* Number of FCoE DWords Received */
+#define IXGBE_FCOEPTC           0x08784 /* Number of FCoE Packets Transmitted */
+#define IXGBE_FCOEDWTC          0x08788 /* Number of FCoE DWords Transmitted */
+#define IXGBE_FCCRC_CNT_MASK    0x0000FFFF /* CRC_CNT: bit 0 - 15 */
+#define IXGBE_FCLAST_CNT_MASK   0x0000FFFF /* Last_CNT: bit 0 - 15 */
+#define IXGBE_O2BGPTC           0x041C4
+#define IXGBE_O2BSPC            0x087B0
+#define IXGBE_B2OSPC            0x041C0
+#define IXGBE_B2OGPRC           0x02F90
+#define IXGBE_BUPRC             0x04180
+#define IXGBE_BMPRC             0x04184
+#define IXGBE_BBPRC             0x04188
+#define IXGBE_BUPTC             0x0418C
+#define IXGBE_BMPTC             0x04190
+#define IXGBE_BBPTC             0x04194
+#define IXGBE_BCRCERRS          0x04198
+#define IXGBE_BXONRXC           0x0419C
+#define IXGBE_BXOFFRXC          0x041E0
+#define IXGBE_BXONTXC           0x041E4
+#define IXGBE_BXOFFTXC          0x041E8
+
 /* To disable unused features */
 #define IXGBE_RXCTRL            0x03000
 #define IXGBE_RTTDQSEL          0x04904
@@ -677,6 +779,10 @@ typedef u32 ixgbe_link_speed;
 #define IXGBE_DCA_RXCTRL_HEAD_WRO_EN    (1 << 15) /* Rx wr header RO */
 #define IXGBE_DCB_MAX_TRAFFIC_CLASS     8
 #define IXGBE_MCSTCTRL          0x05090
+#define IXGBE_VFTA(_i)          (0x0A000 + ((_i) * 4))
+#define IXGBE_VLVF(_i)  (0x0F100 + ((_i) * 4))  /* 64 of these (0-63) */
+#define IXGBE_VLVFB(_i) (0x0F200 + ((_i) * 4))  /* 128 of these (0-127) */
+#define IXGBE_VLVF_ENTRIES              64
 
 /* Error Codes */
 #define IXGBE_ERR_EEPROM                        -1
@@ -838,22 +944,10 @@ struct ixgbe_mac_operations {
         s32 (*start_hw)(struct ixgbe_hw *);
         s32 (*clear_hw_cntrs)(struct ixgbe_hw *);
         enum ixgbe_media_type (*get_media_type)(struct ixgbe_hw *);
-        u32 (*get_supported_physical_layer)(struct ixgbe_hw *);
         s32 (*get_mac_addr)(struct ixgbe_hw *, u8 *);
-        s32 (*get_san_mac_addr)(struct ixgbe_hw *, u8 *);
-        s32 (*set_san_mac_addr)(struct ixgbe_hw *, u8 *);
-        s32 (*get_device_caps)(struct ixgbe_hw *, u16 *);
-        s32 (*get_wwn_prefix)(struct ixgbe_hw *, u16 *, u16 *);
-        s32 (*get_fcoe_boot_status)(struct ixgbe_hw *, u16 *);
         s32 (*stop_adapter)(struct ixgbe_hw *);
-        s32 (*get_bus_info)(struct ixgbe_hw *);
         void (*set_lan_id)(struct ixgbe_hw *);
-        s32 (*read_analog_reg8)(struct ixgbe_hw*, u32, u8*);
-        s32 (*write_analog_reg8)(struct ixgbe_hw*, u32, u8);
         s32 (*setup_sfp)(struct ixgbe_hw *);
-        s32 (*enable_rx_dma)(struct ixgbe_hw *, u32);
-        s32 (*disable_sec_rx_path)(struct ixgbe_hw *);
-        s32 (*enable_sec_rx_path)(struct ixgbe_hw *);
         s32 (*acquire_swfw_sync)(struct ixgbe_hw *, u16);
         void (*release_swfw_sync)(struct ixgbe_hw *, u16);
         s32 (*prot_autoc_read)(struct ixgbe_hw *, bool *, u32 *);
@@ -866,49 +960,13 @@ struct ixgbe_mac_operations {
         s32 (*setup_link)(struct ixgbe_hw *, u32, bool);
         s32 (*check_link)(struct ixgbe_hw *, u32 *, bool *, bool);
 
-       /* Packet Buffer manipulation */
-        void (*setup_rxpba)(struct ixgbe_hw *, int, u32, int);
-
-        /* LED */
-        s32 (*led_on)(struct ixgbe_hw *, u32);
-        s32 (*led_off)(struct ixgbe_hw *, u32);
-        s32 (*blink_led_start)(struct ixgbe_hw *, u32);
-        s32 (*blink_led_stop)(struct ixgbe_hw *, u32);
-
         /* RAR, Multicast, VLAN */
         s32 (*set_rar)(struct ixgbe_hw *, u32, u8 *, u32, u32);
-        s32 (*set_uc_addr)(struct ixgbe_hw *, u32, u8 *);
-        s32 (*clear_rar)(struct ixgbe_hw *, u32);
-        s32 (*insert_mac_addr)(struct ixgbe_hw *, u8 *, u32);
-        s32 (*set_vmdq)(struct ixgbe_hw *, u32, u32);
-        s32 (*set_vmdq_san_mac)(struct ixgbe_hw *, u32);
-        s32 (*clear_vmdq)(struct ixgbe_hw *, u32, u32);
         s32 (*init_rx_addrs)(struct ixgbe_hw *);
-        s32 (*enable_mc)(struct ixgbe_hw *);
-        s32 (*disable_mc)(struct ixgbe_hw *);
         s32 (*clear_vfta)(struct ixgbe_hw *);
-        s32 (*set_vfta)(struct ixgbe_hw *, u32, u32, bool);
-        s32 (*set_vlvf)(struct ixgbe_hw *, u32, u32, bool, bool *);
-        s32 (*init_uta_tables)(struct ixgbe_hw *);
-        void (*set_mac_anti_spoofing)(struct ixgbe_hw *, bool, int);
-        void (*set_vlan_anti_spoofing)(struct ixgbe_hw *, bool, int);
-
-        /* Flow Control */
-        s32 (*fc_enable)(struct ixgbe_hw *);
 
         /* Manageability interface */
         s32 (*set_fw_drv_ver)(struct ixgbe_hw *, u8, u8, u8, u8);
-        s32 (*get_thermal_sensor_data)(struct ixgbe_hw *);
-        s32 (*init_thermal_sensor_thresh)(struct ixgbe_hw *hw);
-        s32 (*dmac_config)(struct ixgbe_hw *hw);
-        s32 (*dmac_update_tcs)(struct ixgbe_hw *hw);
-        s32 (*dmac_config_tcs)(struct ixgbe_hw *hw);
-        void (*get_rtrup2tc)(struct ixgbe_hw *hw, u8 *map);
-        s32 (*set_eee)(struct ixgbe_hw *hw, bool enable_eee);
-        s32 (*eee_linkup)(struct ixgbe_hw *hw, bool eee_enabled);
-        void (*set_ethertype_anti_spoofing)(struct ixgbe_hw *, bool, int);
-        void (*disable_rx)(struct ixgbe_hw *hw);
-        void (*enable_rx)(struct ixgbe_hw *hw);
 };
 
 struct ixgbe_phy_operations {

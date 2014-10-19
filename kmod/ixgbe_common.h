@@ -27,6 +27,10 @@ s32 ixgbe_read_pba_string_generic(struct ixgbe_hw *hw, u8 *pba_num,
                                   u32 pba_num_size);
 s32 ixgbe_set_rar_generic(struct ixgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
                           u32 enable_addr);
+s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u16 mask);
+void ixgbe_release_swfw_sync(struct ixgbe_hw *hw, u16 mask);
+s32 ixgbe_clear_vfta_generic(struct ixgbe_hw *hw);
+s32 ixgbe_clear_hw_cntrs_generic(struct ixgbe_hw *hw);
 
 static inline bool IXGBE_REMOVED(void __iomem *addr)
 {

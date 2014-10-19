@@ -38,6 +38,8 @@ static void ixgbe_shift_out_eeprom_bits(struct ixgbe_hw *hw, u16 data,
 static u16 ixgbe_shift_in_eeprom_bits(struct ixgbe_hw *hw, u16 count);
 static void ixgbe_raise_eeprom_clk(struct ixgbe_hw *hw, u32 *eec);
 static void ixgbe_lower_eeprom_clk(struct ixgbe_hw *hw, u32 *eec);
+static s32 ixgbe_get_eeprom_semaphore(struct ixgbe_hw *hw);
+static void ixgbe_release_eeprom_semaphore(struct ixgbe_hw *hw);
 
 s32 ixgbe_init_hw_generic(struct ixgbe_hw *hw){
         s32 status;
@@ -373,9 +375,6 @@ s32 ixgbe_init_rx_addrs_generic(struct ixgbe_hw *hw){
         } else {
                 /* Setup the receive address. */
                 hw->mac.ops.set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
-
-                /* clear VMDq pool/queue selection for RAR 0 */
-                hw->mac.ops.clear_vmdq(hw, 0, IXGBE_CLEAR_VMDQ_ALL);
         }
 
         /* Zero out the other receive addresses. */
@@ -1244,9 +1243,6 @@ s32 ixgbe_set_rar_generic(struct ixgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
                 return IXGBE_ERR_INVALID_ARGUMENT;
         }
 
-        /* setup VMDq pool selection before this RAR gets enabled */
-        hw->mac.ops.set_vmdq(hw, index, vmdq);
-
         /*
          * HW expects these in little endian so we reverse the byte
          * order from network order (big endian) to little endian
@@ -1271,4 +1267,233 @@ s32 ixgbe_set_rar_generic(struct ixgbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
         IXGBE_WRITE_REG(hw, IXGBE_RAH(index), rar_high);
 
         return 0;
+}
+
+s32 ixgbe_acquire_swfw_sync(struct ixgbe_hw *hw, u16 mask)
+{
+        u32 gssr = 0;
+        u32 swmask = mask;
+        u32 fwmask = mask << 5;
+        u32 timeout = 200;
+        u32 i;
+
+        for (i = 0; i < timeout; i++) {
+                /*
+                 * SW NVM semaphore bit is used for access to all
+                 * SW_FW_SYNC bits (not just NVM)
+                 */
+                if (ixgbe_get_eeprom_semaphore(hw))
+                        return IXGBE_ERR_SWFW_SYNC;
+
+                gssr = IXGBE_READ_REG(hw, IXGBE_GSSR);
+                if (!(gssr & (fwmask | swmask))) {
+                        gssr |= swmask;
+                        IXGBE_WRITE_REG(hw, IXGBE_GSSR, gssr);
+                        ixgbe_release_eeprom_semaphore(hw);
+                        return 0;
+                } else {
+                        /* Resource is currently in use by FW or SW */
+                        ixgbe_release_eeprom_semaphore(hw);
+                        msleep(5);
+                }
+        }
+
+        /* If time expired clear the bits holding the lock and retry */
+        if (gssr & (fwmask | swmask))
+                ixgbe_release_swfw_sync(hw, gssr & (fwmask | swmask));
+
+        msleep(5);
+        return IXGBE_ERR_SWFW_SYNC;
+}
+
+void ixgbe_release_swfw_sync(struct ixgbe_hw *hw, u16 mask)
+{
+        u32 gssr;
+        u32 swmask = mask;
+
+        ixgbe_get_eeprom_semaphore(hw);
+
+        gssr = IXGBE_READ_REG(hw, IXGBE_GSSR);
+        gssr &= ~swmask;
+        IXGBE_WRITE_REG(hw, IXGBE_GSSR, gssr);
+
+        ixgbe_release_eeprom_semaphore(hw);
+}
+
+s32 ixgbe_clear_vfta_generic(struct ixgbe_hw *hw)
+{
+        u32 offset;
+
+        for (offset = 0; offset < hw->mac.vft_size; offset++)
+                IXGBE_WRITE_REG(hw, IXGBE_VFTA(offset), 0);
+
+        for (offset = 0; offset < IXGBE_VLVF_ENTRIES; offset++) {
+                IXGBE_WRITE_REG(hw, IXGBE_VLVF(offset), 0);
+                IXGBE_WRITE_REG(hw, IXGBE_VLVFB(offset * 2), 0);
+                IXGBE_WRITE_REG(hw, IXGBE_VLVFB((offset * 2) + 1), 0);
+        }
+
+        return 0;
+}
+
+s32 ixgbe_clear_hw_cntrs_generic(struct ixgbe_hw *hw)
+{
+        u16 i = 0;
+
+        IXGBE_READ_REG(hw, IXGBE_CRCERRS);
+        IXGBE_READ_REG(hw, IXGBE_ILLERRC);
+        IXGBE_READ_REG(hw, IXGBE_ERRBC);
+        IXGBE_READ_REG(hw, IXGBE_MSPDC);
+
+        for (i = 0; i < 8; i++)
+                IXGBE_READ_REG(hw, IXGBE_MPC(i));
+
+        IXGBE_READ_REG(hw, IXGBE_MLFC);
+        IXGBE_READ_REG(hw, IXGBE_MRFC);
+        IXGBE_READ_REG(hw, IXGBE_RLEC);
+        IXGBE_READ_REG(hw, IXGBE_LXONTXC);
+        IXGBE_READ_REG(hw, IXGBE_LXOFFTXC);
+        IXGBE_READ_REG(hw, IXGBE_LXONRXCNT);
+        IXGBE_READ_REG(hw, IXGBE_LXOFFRXCNT);
+
+        for (i = 0; i < 8; i++) {
+                IXGBE_READ_REG(hw, IXGBE_PXONTXC(i));
+                IXGBE_READ_REG(hw, IXGBE_PXOFFTXC(i));
+                IXGBE_READ_REG(hw, IXGBE_PXONRXCNT(i));
+                IXGBE_READ_REG(hw, IXGBE_PXOFFRXCNT(i));
+        }
+
+        for (i = 0; i < 8; i++)
+        	IXGBE_READ_REG(hw, IXGBE_PXON2OFFCNT(i));
+
+        IXGBE_READ_REG(hw, IXGBE_PRC64);
+        IXGBE_READ_REG(hw, IXGBE_PRC127);
+        IXGBE_READ_REG(hw, IXGBE_PRC255);
+        IXGBE_READ_REG(hw, IXGBE_PRC511);
+        IXGBE_READ_REG(hw, IXGBE_PRC1023);
+        IXGBE_READ_REG(hw, IXGBE_PRC1522);
+        IXGBE_READ_REG(hw, IXGBE_GPRC);
+        IXGBE_READ_REG(hw, IXGBE_BPRC);
+        IXGBE_READ_REG(hw, IXGBE_MPRC);
+        IXGBE_READ_REG(hw, IXGBE_GPTC);
+        IXGBE_READ_REG(hw, IXGBE_GORCL);
+        IXGBE_READ_REG(hw, IXGBE_GORCH);
+        IXGBE_READ_REG(hw, IXGBE_GOTCL);
+        IXGBE_READ_REG(hw, IXGBE_GOTCH);
+        IXGBE_READ_REG(hw, IXGBE_RUC);
+        IXGBE_READ_REG(hw, IXGBE_RFC);
+        IXGBE_READ_REG(hw, IXGBE_ROC);
+        IXGBE_READ_REG(hw, IXGBE_RJC);
+        IXGBE_READ_REG(hw, IXGBE_MNGPRC);
+        IXGBE_READ_REG(hw, IXGBE_MNGPDC);
+        IXGBE_READ_REG(hw, IXGBE_MNGPTC);
+        IXGBE_READ_REG(hw, IXGBE_TORL);
+        IXGBE_READ_REG(hw, IXGBE_TORH);
+        IXGBE_READ_REG(hw, IXGBE_TPR);
+        IXGBE_READ_REG(hw, IXGBE_TPT);
+        IXGBE_READ_REG(hw, IXGBE_PTC64);
+        IXGBE_READ_REG(hw, IXGBE_PTC127);
+        IXGBE_READ_REG(hw, IXGBE_PTC255);
+        IXGBE_READ_REG(hw, IXGBE_PTC511);
+        IXGBE_READ_REG(hw, IXGBE_PTC1023);
+        IXGBE_READ_REG(hw, IXGBE_PTC1522);
+        IXGBE_READ_REG(hw, IXGBE_MPTC);
+        IXGBE_READ_REG(hw, IXGBE_BPTC);
+        for (i = 0; i < 16; i++) {
+                IXGBE_READ_REG(hw, IXGBE_QPRC(i));
+                IXGBE_READ_REG(hw, IXGBE_QPTC(i));
+                IXGBE_READ_REG(hw, IXGBE_QBRC_L(i));
+                IXGBE_READ_REG(hw, IXGBE_QBRC_H(i));
+                IXGBE_READ_REG(hw, IXGBE_QBTC_L(i));
+                IXGBE_READ_REG(hw, IXGBE_QBTC_H(i));
+                IXGBE_READ_REG(hw, IXGBE_QPRDC(i));
+        }
+
+        return 0;
+}
+
+static s32 ixgbe_get_eeprom_semaphore(struct ixgbe_hw *hw)
+{
+        s32 status = IXGBE_ERR_EEPROM;
+        u32 timeout = 2000;
+        u32 i;
+        u32 swsm;
+
+        /* Get SMBI software semaphore between device drivers first */
+        for (i = 0; i < timeout; i++) {
+                /*
+                 * If the SMBI bit is 0 when we read it, then the bit will be
+                 * set and we have the semaphore
+                 */
+                swsm = IXGBE_READ_REG(hw, IXGBE_SWSM);
+                if (!(swsm & IXGBE_SWSM_SMBI)) {
+                        status = 0;
+                        break;
+                }
+                udelay(50);
+        }
+
+        if (i == timeout) {
+                /*
+                 * this release is particularly important because our attempts
+                 * above to get the semaphore may have succeeded, and if there
+                 * was a timeout, we should unconditionally clear the semaphore
+                 * bits to free the driver to make progress
+                 */
+                ixgbe_release_eeprom_semaphore(hw);
+
+                udelay(50);
+                /*
+                 * one last try
+                 * If the SMBI bit is 0 when we read it, then the bit will be
+                 * set and we have the semaphore
+                 */
+                swsm = IXGBE_READ_REG(hw, IXGBE_SWSM);
+                if (!(swsm & IXGBE_SWSM_SMBI))
+                        status = 0;
+        }
+
+        /* Now get the semaphore between SW/FW through the SWESMBI bit */
+        if (status == 0) {
+                for (i = 0; i < timeout; i++) {
+                        swsm = IXGBE_READ_REG(hw, IXGBE_SWSM);
+
+                        /* Set the SW EEPROM semaphore bit to request access */
+                        swsm |= IXGBE_SWSM_SWESMBI;
+                        IXGBE_WRITE_REG(hw, IXGBE_SWSM, swsm);
+
+                        /*
+                         * If we set the bit successfully then we got the
+                         * semaphore.
+                         */
+                        swsm = IXGBE_READ_REG(hw, IXGBE_SWSM);
+                        if (swsm & IXGBE_SWSM_SWESMBI)
+                                break;
+
+                        udelay(50);
+                }
+
+                /*
+                 * Release semaphores and return error if SW EEPROM semaphore
+                 * was not granted because we don't have access to the EEPROM
+                 */
+                if (i >= timeout) {
+                        ixgbe_release_eeprom_semaphore(hw);
+                        status = IXGBE_ERR_EEPROM;
+                }
+        }
+
+        return status;
+}
+
+static void ixgbe_release_eeprom_semaphore(struct ixgbe_hw *hw)
+{
+        u32 swsm;
+
+        swsm = IXGBE_READ_REG(hw, IXGBE_SWSM);
+
+        /* Release both semaphores by writing 0 to the bits SWESMBI and SMBI */
+        swsm &= ~(IXGBE_SWSM_SWESMBI | IXGBE_SWSM_SMBI);
+        IXGBE_WRITE_REG(hw, IXGBE_SWSM, swsm);
+        IXGBE_WRITE_FLUSH(hw);
 }

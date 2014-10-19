@@ -44,23 +44,28 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw){
 	phy->ops.write_reg_mdi = &ixgbe_write_phy_reg_mdi;
 
         /* MAC */
-	mac->ops.init_hw = &ixgbe_init_hw_generic;						//used
-        mac->ops.reset_hw = &ixgbe_reset_hw_82599;						//used
-	mac->ops.get_mac_addr = &ixgbe_get_mac_addr_generic;					//used
-        mac->ops.get_media_type = &ixgbe_get_media_type_82599;					//used
-	mac->ops.setup_link = &ixgbe_setup_mac_link_82599;					//used
-        mac->ops.start_hw = &ixgbe_start_hw_82599;						//used
-        mac->ops.prot_autoc_write = &prot_autoc_write_82599;					//used
-        mac->ops.stop_adapter = &ixgbe_stop_adapter_generic;					//used
+	mac->ops.init_hw = &ixgbe_init_hw_generic;
+        mac->ops.reset_hw = &ixgbe_reset_hw_82599;
+	mac->ops.get_mac_addr = &ixgbe_get_mac_addr_generic;
+        mac->ops.get_media_type = &ixgbe_get_media_type_82599;
+	mac->ops.setup_link = &ixgbe_setup_mac_link_82599;
+	mac->ops.check_link = &ixgbe_check_mac_link_generic;
+        mac->ops.start_hw = &ixgbe_start_hw_82599;
+        mac->ops.prot_autoc_write = &prot_autoc_write_82599;
+	mac->ops.prot_autoc_read = &prot_autoc_read_82599;
+        mac->ops.stop_adapter = &ixgbe_stop_adapter_generic;
+	mac->ops.setup_sfp = &ixgbe_setup_sfp_modules_82599;
+	mac->ops.acquire_swfw_sync = &ixgbe_acquire_swfw_sync;
+	mac->ops.release_swfw_sync = &ixgbe_release_swfw_sync;
+	mac->ops.clear_hw_cntrs = &ixgbe_clear_hw_cntrs_generic;
 
         /* RAR, Multicast, VLAN */
 	mac->ops.set_rar = &ixgbe_set_rar_generic;
-        mac->ops.setup_sfp = &ixgbe_setup_sfp_modules_82599;					//used
-        mac->ops.init_rx_addrs = &ixgbe_init_rx_addrs_generic;					//used
+        mac->ops.init_rx_addrs = &ixgbe_init_rx_addrs_generic;
+	mac->ops.clear_vfta = &ixgbe_clear_vfta_generic;
 
-        /* Link */
-        mac->ops.check_link = &ixgbe_check_mac_link_generic;					//used
-        ixgbe_init_mac_link_ops_82599(hw);
+	/* Manageability interface */
+	mac->ops.set_fw_drv_ver = &ixgbe_set_fw_drv_ver_generic;
 
         mac->mcft_size          = IXGBE_82599_MC_TBL_SIZE;
         mac->vft_size           = IXGBE_82599_VFT_TBL_SIZE;
@@ -76,9 +81,6 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw){
         /* EEPROM */
         eeprom->ops.read = &ixgbe_read_eeprom_82599;						//used
         eeprom->ops.validate_checksum = &ixgbe_validate_eeprom_checksum_generic;		//used
-
-        /* Manageability interface */
-        mac->ops.set_fw_drv_ver = &ixgbe_set_fw_drv_ver_generic;				//used
 
         return 0;
 }
@@ -347,6 +349,25 @@ void ixgbe_flap_tx_laser_multispeed_fiber(struct ixgbe_hw *hw){
                 ixgbe_enable_tx_laser_multispeed_fiber(hw);
                 hw->mac.autotry_restart = false;
         }
+}
+
+s32 prot_autoc_read_82599(struct ixgbe_hw *hw, bool *locked, u32 *reg_val)
+{
+        s32 ret_val;
+
+        *locked = false;
+         /* If LESM is on then we need to hold the SW/FW semaphore. */
+        if (ixgbe_verify_lesm_fw_enabled_82599(hw)) {
+                ret_val = hw->mac.ops.acquire_swfw_sync(hw,
+                                        IXGBE_GSSR_MAC_CSR_SM);
+                if (ret_val != 0)
+                        return IXGBE_ERR_SWFW_SYNC;
+
+                *locked = true;
+        }
+
+        *reg_val = IXGBE_READ_REG(hw, IXGBE_AUTOC);
+        return 0;
 }
 
 s32 prot_autoc_write_82599(struct ixgbe_hw *hw, u32 autoc, bool locked){
