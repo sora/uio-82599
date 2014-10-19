@@ -538,11 +538,7 @@ s32 ixgbe_identify_phy_82599(struct ixgbe_hw *hw){
         /* Detect PHY if not unknown - returns success if already detected. */
         status = ixgbe_identify_phy_generic(hw);
         if (status != 0) {
-                /* 82599 10GBASE-T requires an external PHY */
-                if (hw->mac.ops.get_media_type(hw) == ixgbe_media_type_copper)
-                        goto out;
-                else
-                        status = ixgbe_identify_module_generic(hw);
+                status = ixgbe_identify_module_generic(hw);
         }
 
         /* Set PHY type none if no PHY detected */
@@ -555,7 +551,6 @@ s32 ixgbe_identify_phy_82599(struct ixgbe_hw *hw){
         if (hw->phy.type == ixgbe_phy_sfp_unsupported)
                 status = IXGBE_ERR_SFP_NOT_SUPPORTED;
 
-out:
         return status;
 }
 

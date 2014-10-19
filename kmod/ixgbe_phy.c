@@ -122,7 +122,7 @@ s32 ixgbe_identify_module_generic(struct ixgbe_hw *hw)
         case ixgbe_media_type_fiber:
 		/* LAN ID is needed for sfp_type determination */
 		hw->mac.ops.set_lan_id(hw);
-		/* Currently we support only SR/LR optical fiber */
+		/* Currently we support only SR/LR SFP+ module on the phy layer */
 		if (hw->bus.lan_id == 0)
 			hw->phy.sfp_type = ixgbe_sfp_type_srlr_core0;
 		else
@@ -151,21 +151,6 @@ s32 ixgbe_get_sfp_init_sequence_offsets(struct ixgbe_hw *hw,
 
         if (hw->phy.sfp_type == ixgbe_sfp_type_not_present)
                 return IXGBE_ERR_SFP_NOT_PRESENT;
-
-        /*
-         * Limiting active cables and 1G Phys must be initialized as
-         * SR modules
-         */
-        if (sfp_type == ixgbe_sfp_type_da_act_lmt_core0 ||
-            sfp_type == ixgbe_sfp_type_1g_lx_core0 ||
-            sfp_type == ixgbe_sfp_type_1g_cu_core0 ||
-            sfp_type == ixgbe_sfp_type_1g_sx_core0)
-                sfp_type = ixgbe_sfp_type_srlr_core0;
-        else if (sfp_type == ixgbe_sfp_type_da_act_lmt_core1 ||
-                 sfp_type == ixgbe_sfp_type_1g_lx_core1 ||
-                 sfp_type == ixgbe_sfp_type_1g_cu_core1 ||
-                 sfp_type == ixgbe_sfp_type_1g_sx_core1)
-                sfp_type = ixgbe_sfp_type_srlr_core1;
 
         /* Read offset to PHY init contents */
         if (hw->eeprom.ops.read(hw, IXGBE_PHY_INIT_OFFSET_NL, list_offset)) {
@@ -210,32 +195,6 @@ s32 ixgbe_get_sfp_init_sequence_offsets(struct ixgbe_hw *hw,
 
 err_phy:
         return IXGBE_ERR_PHY;
-}
-
-s32 ixgbe_get_copper_link_capabilities_generic(struct ixgbe_hw *hw,
-                                               ixgbe_link_speed *speed,
-                                               bool *autoneg)
-{
-        s32 status;
-        u16 speed_ability;
-
-        *speed = 0;
-        *autoneg = true;
-
-        status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_SPEED_ABILITY,
-                                      IXGBE_MDIO_PMA_PMD_DEV_TYPE,
-                                      &speed_ability);
-
-        if (status == 0) {
-                if (speed_ability & IXGBE_MDIO_PHY_SPEED_10G)
-                        *speed |= IXGBE_LINK_SPEED_10GB_FULL;
-                if (speed_ability & IXGBE_MDIO_PHY_SPEED_1G)
-                        *speed |= IXGBE_LINK_SPEED_1GB_FULL;
-                if (speed_ability & IXGBE_MDIO_PHY_SPEED_100M)
-                        *speed |= IXGBE_LINK_SPEED_100_FULL;
-        }
-
-        return status;
 }
 
 bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr)
