@@ -122,7 +122,7 @@ s32 ixgbe_identify_module_generic(struct ixgbe_hw *hw)
         case ixgbe_media_type_fiber:
 		/* LAN ID is needed for sfp_type determination */
 		hw->mac.ops.set_lan_id(hw);
-		/* Currently we support only SR/LR SFP+ module on the phy layer */
+		/* Currently we support only 10GbE SR/LR SFP+ module on the phy layer */
 		if (hw->bus.lan_id == 0)
 			hw->phy.sfp_type = ixgbe_sfp_type_srlr_core0;
 		else
