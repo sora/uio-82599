@@ -101,6 +101,12 @@ s32 ixgbe_reset_hw_82599(struct ixgbe_hw *hw){
 	/* Identify PHY and related function pointers */
 	status = hw->phy.ops.init(hw);
 
+        /* Setup SFP module if there is one present. */
+        if (hw->phy.sfp_setup_needed) {
+                status = hw->mac.ops.setup_sfp(hw);
+                hw->phy.sfp_setup_needed = false;
+        }
+
 mac_reset_top:
         /*
          * Issue global reset to the MAC.  Needs to be SW reset if link is up.

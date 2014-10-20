@@ -526,7 +526,6 @@ static void uio_ixgbe_setup_gpie(struct uio_ixgbe_udapter *ud){
 
 static int uio_ixgbe_up(struct uio_ixgbe_udapter *ud){
         struct ixgbe_hw *hw = ud->hw;
-        int err;
 
         uio_ixgbe_take_hw_control(ud);
         uio_ixgbe_setup_gpie(ud);
@@ -537,9 +536,6 @@ static int uio_ixgbe_up(struct uio_ixgbe_udapter *ud){
         /* enable the optics for 82599 SFP+ fiber */
         if (hw->mac.ops.enable_tx_laser)
                 hw->mac.ops.enable_tx_laser(hw);
-
-	err = hw->mac.ops.setup_sfp(hw);
-	IXGBE_DBG("detected SFP+: %d\n", hw->phy.sfp_type);
 
         if (hw->mac.ops.setup_link)
                 hw->mac.ops.setup_link(hw, IXGBE_LINK_SPEED_10GB_FULL, true);

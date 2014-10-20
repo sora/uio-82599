@@ -984,7 +984,7 @@ struct ixgbe_phy_info {
         enum ixgbe_phy_type type;
         enum ixgbe_sfp_type sfp_type;
         enum ixgbe_media_type media_type;
-        bool reset_disable;
+	bool sfp_setup_needed;
 };
 
 struct ixgbe_eeprom_info {

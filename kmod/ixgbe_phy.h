@@ -52,19 +52,7 @@
 #define IXGBE_MSRWD_READ_DATA_MASK      0xFFFF0000
 #define IXGBE_MSRWD_READ_DATA_SHIFT     16
 
-s32 ixgbe_reset_phy_generic(struct ixgbe_hw *hw);
-s32 ixgbe_identify_phy_generic(struct ixgbe_hw *hw);
 s32 ixgbe_get_sfp_init_sequence_offsets(struct ixgbe_hw *hw,
                                         u16 *list_offset,
                                         u16 *data_offset);
 s32 ixgbe_identify_module_generic(struct ixgbe_hw *hw);
-bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr);
-s32 ixgbe_get_phy_id(struct ixgbe_hw *hw);
-s32 ixgbe_read_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
-                               u32 device_type, u16 *phy_data);
-s32 ixgbe_write_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,
-                                u32 device_type, u16 phy_data);
-s32 ixgbe_read_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr, u32 device_type,
-                       u16 *phy_data);
-s32 ixgbe_write_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr,
-                                u32 device_type, u16 phy_data);

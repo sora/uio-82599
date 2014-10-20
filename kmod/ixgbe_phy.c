@@ -27,6 +27,7 @@
 s32 ixgbe_identify_module_generic(struct ixgbe_hw *hw)
 {
         s32 status = IXGBE_ERR_SFP_NOT_PRESENT;
+	enum ixgbe_sfp_type stored_sfp_type = hw->phy.sfp_type;
 
         switch (hw->mac.ops.get_media_type(hw)) {
         case ixgbe_media_type_fiber:
@@ -39,6 +40,8 @@ s32 ixgbe_identify_module_generic(struct ixgbe_hw *hw)
 			hw->phy.sfp_type = ixgbe_sfp_type_srlr_core1;
 
 		hw->phy.type = ixgbe_phy_sfp_unknown;
+		if (hw->phy.sfp_type != stored_sfp_type)
+			hw->phy.sfp_setup_needed = true;
                 status = 0;
                 break;
 
