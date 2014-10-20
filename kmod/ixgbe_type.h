@@ -850,9 +850,7 @@ typedef u32 ixgbe_link_speed;
 
 enum ixgbe_phy_type {
         ixgbe_phy_unknown = 0,
-        ixgbe_phy_none,
-	ixgbe_phy_cu_unknown,
-	ixgbe_phy_generic
+        ixgbe_phy_sfp_unknown,
 };
 
 enum ixgbe_mac_type {
@@ -863,35 +861,9 @@ enum ixgbe_mac_type {
         ixgbe_num_macs
 };
 
-/*
- * SFP+ module type IDs:
- *
- * ID   Module Type
- * =============
- * 0    SFP_DA_CU
- * 1    SFP_SR
- * 2    SFP_LR
- * 3    SFP_DA_CU_CORE0 - 82599-specific
- * 4    SFP_DA_CU_CORE1 - 82599-specific
- * 5    SFP_SR/LR_CORE0 - 82599-specific
- * 6    SFP_SR/LR_CORE1 - 82599-specific
- */
 enum ixgbe_sfp_type {
-        ixgbe_sfp_type_da_cu = 0,
-        ixgbe_sfp_type_sr = 1,
-        ixgbe_sfp_type_lr = 2,
-        ixgbe_sfp_type_da_cu_core0 = 3,
-        ixgbe_sfp_type_da_cu_core1 = 4,
         ixgbe_sfp_type_srlr_core0 = 5,
         ixgbe_sfp_type_srlr_core1 = 6,
-        ixgbe_sfp_type_da_act_lmt_core0 = 7,
-        ixgbe_sfp_type_da_act_lmt_core1 = 8,
-        ixgbe_sfp_type_1g_cu_core0 = 9,
-        ixgbe_sfp_type_1g_cu_core1 = 10,
-        ixgbe_sfp_type_1g_sx_core0 = 11,
-        ixgbe_sfp_type_1g_sx_core1 = 12,
-        ixgbe_sfp_type_1g_lx_core0 = 13,
-        ixgbe_sfp_type_1g_lx_core1 = 14,
         ixgbe_sfp_type_not_present = 0xFFFE,
         ixgbe_sfp_type_unknown = 0xFFFF
 };
@@ -899,12 +871,6 @@ enum ixgbe_sfp_type {
 enum ixgbe_media_type {
         ixgbe_media_type_unknown = 0,
         ixgbe_media_type_fiber,
-        ixgbe_media_type_fiber_qsfp,
-        ixgbe_media_type_fiber_lco,
-        ixgbe_media_type_copper,
-        ixgbe_media_type_backplane,
-        ixgbe_media_type_cx4,
-        ixgbe_media_type_virtual
 };
 
 enum ixgbe_eeprom_type {
@@ -958,11 +924,6 @@ struct ixgbe_mac_operations {
 struct ixgbe_phy_operations {
 	s32 (*identify)(struct ixgbe_hw *);
 	s32 (*init)(struct ixgbe_hw *);
-	s32 (*reset)(struct ixgbe_hw *);
-	s32 (*read_reg)(struct ixgbe_hw *, u32, u32, u16 *);
-	s32 (*read_reg_mdi)(struct ixgbe_hw *, u32, u32, u16 *);
-	s32 (*write_reg)(struct ixgbe_hw *, u32, u32, u16);
-	s32 (*write_reg_mdi)(struct ixgbe_hw *, u32, u32, u16);
 };
 
 struct ixgbe_eeprom_operations {
@@ -1021,10 +982,7 @@ struct ixgbe_fc_info {
 struct ixgbe_phy_info {
         struct ixgbe_phy_operations ops;
         enum ixgbe_phy_type type;
-        u32 addr;
-        u32 id;
         enum ixgbe_sfp_type sfp_type;
-        u32 revision;
         enum ixgbe_media_type media_type;
         bool reset_disable;
 };

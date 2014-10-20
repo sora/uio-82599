@@ -64,11 +64,7 @@ struct uio_ixgbe_info {
 
         uint16_t  mac_type;
         uint8_t   mac_addr[ETH_ALEN];
-
         uint16_t  phy_type;
-        uint32_t  phy_addr;
-        uint32_t  phy_id;
-        uint32_t  phy_revision;
 };
 
 #define UIO_IXGBE_INFO       _IOW('E', 201, int)

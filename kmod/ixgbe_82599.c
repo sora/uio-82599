@@ -37,11 +37,6 @@ s32 ixgbe_init_ops_82599(struct ixgbe_hw *hw){
 	/* PHY */
 	phy->ops.identify = &ixgbe_identify_phy_82599;
 	phy->ops.init = &ixgbe_init_phy_ops_82599;
-	phy->ops.reset = &ixgbe_reset_phy_generic;
-	phy->ops.read_reg = &ixgbe_read_phy_reg_generic;
-	phy->ops.read_reg_mdi = &ixgbe_read_phy_reg_mdi;
-	phy->ops.write_reg = &ixgbe_write_phy_reg_generic;
-	phy->ops.write_reg_mdi = &ixgbe_write_phy_reg_mdi;
 
 	/* MAC */
 	mac->ops.init_hw = &ixgbe_init_hw_generic;
@@ -103,17 +98,8 @@ s32 ixgbe_reset_hw_82599(struct ixgbe_hw *hw){
         /* flush pending Tx transactions */
         ixgbe_clear_tx_pending(hw);
 
-        /* PHY ops must be identified and initialized prior to reset */
-
-        /* Identify PHY and related function pointers */
-        status = hw->phy.ops.init(hw);
-
-        if (status == IXGBE_ERR_SFP_NOT_SUPPORTED)
-                goto reset_hw_out;
-
-        /* Reset PHY */
-        if (hw->phy.reset_disable == false && hw->phy.ops.reset != NULL)
-                hw->phy.ops.reset(hw);
+	/* Identify PHY and related function pointers */
+	status = hw->phy.ops.init(hw);
 
 mac_reset_top:
         /*
@@ -283,8 +269,6 @@ s32 ixgbe_init_phy_ops_82599(struct ixgbe_hw *hw){
 
         /* Setup function pointers based on detected SFP module and speeds */
         ixgbe_init_mac_link_ops_82599(hw);
-        if (hw->phy.sfp_type != ixgbe_sfp_type_unknown)
-                hw->phy.ops.reset = NULL;
 
 init_phy_ops_out:
         return ret_val;
@@ -440,51 +424,44 @@ s32 ixgbe_setup_sfp_modules_82599(struct ixgbe_hw *hw){
         s32 ret_val = 0;
         u16 list_offset, data_offset, data_value;
 
-        if (hw->phy.sfp_type != ixgbe_sfp_type_unknown) {
-                ixgbe_init_mac_link_ops_82599(hw);
+	ixgbe_init_mac_link_ops_82599(hw);
 
-                hw->phy.ops.reset = NULL;
+	ret_val = ixgbe_get_sfp_init_sequence_offsets(hw, &list_offset, &data_offset);
+	if (ret_val != 0)
+		goto setup_sfp_out;
 
-                ret_val = ixgbe_get_sfp_init_sequence_offsets(hw, &list_offset,
-                                                              &data_offset);
-                if (ret_val != 0)
-                        goto setup_sfp_out;
+	/* PHY config will finish before releasing the semaphore */
+	ret_val = hw->mac.ops.acquire_swfw_sync(hw, IXGBE_GSSR_MAC_CSR_SM);
+	if (ret_val != 0) {
+		ret_val = IXGBE_ERR_SWFW_SYNC;
+		goto setup_sfp_out;
+	}
 
-                /* PHY config will finish before releasing the semaphore */
-                ret_val = hw->mac.ops.acquire_swfw_sync(hw,
-                                                        IXGBE_GSSR_MAC_CSR_SM);
-                if (ret_val != 0) {
-                        ret_val = IXGBE_ERR_SWFW_SYNC;
-                        goto setup_sfp_out;
-                }
+	if (hw->eeprom.ops.read(hw, ++data_offset, &data_value))
+		goto setup_sfp_err;
+	while (data_value != 0xffff) {
+		IXGBE_WRITE_REG(hw, IXGBE_CORECTL, data_value);
+		IXGBE_WRITE_FLUSH(hw);
+		if (hw->eeprom.ops.read(hw, ++data_offset, &data_value))
+			goto setup_sfp_err;
+	}
 
-                if (hw->eeprom.ops.read(hw, ++data_offset, &data_value))
-                        goto setup_sfp_err;
-                while (data_value != 0xffff) {
-                        IXGBE_WRITE_REG(hw, IXGBE_CORECTL, data_value);
-                        IXGBE_WRITE_FLUSH(hw);
-                        if (hw->eeprom.ops.read(hw, ++data_offset, &data_value))
-                                goto setup_sfp_err;
-                }
+	/* Release the semaphore */
+	hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_MAC_CSR_SM);
+	/* Delay obtaining semaphore again to allow FW access
+	* prot_autoc_write uses the semaphore too.
+	*/
+	msleep(hw->eeprom.semaphore_delay);
 
-                /* Release the semaphore */
-                hw->mac.ops.release_swfw_sync(hw, IXGBE_GSSR_MAC_CSR_SM);
-                /* Delay obtaining semaphore again to allow FW access
-                 * prot_autoc_write uses the semaphore too.
-                 */
-                msleep(hw->eeprom.semaphore_delay);
+	/* Restart DSP and set SFI mode */
+	ret_val = hw->mac.ops.prot_autoc_write(hw,
+	hw->mac.orig_autoc | IXGBE_AUTOC_LMS_10G_SERIAL,
+	false);
 
-                /* Restart DSP and set SFI mode */
-                ret_val = hw->mac.ops.prot_autoc_write(hw,
-                        hw->mac.orig_autoc | IXGBE_AUTOC_LMS_10G_SERIAL,
-                        false);
-
-                if (ret_val) {
-                        ret_val = IXGBE_ERR_SFP_SETUP_NOT_COMPLETE;
-                        goto setup_sfp_out;
-                }
-
-        }
+	if (ret_val) {
+		ret_val = IXGBE_ERR_SFP_SETUP_NOT_COMPLETE;
+		goto setup_sfp_out;
+	}
 
 setup_sfp_out:
         return ret_val;
@@ -562,16 +539,7 @@ s32 ixgbe_identify_phy_82599(struct ixgbe_hw *hw){
         s32 status;
 
         /* Detect PHY if not unknown - returns success if already detected. */
-        status = ixgbe_identify_phy_generic(hw);
-        if (status != 0) {
-                status = ixgbe_identify_module_generic(hw);
-        }
-
-        /* Set PHY type none if no PHY detected */
-        if (hw->phy.type == ixgbe_phy_unknown) {
-                hw->phy.type = ixgbe_phy_none;
-                status = 0;
-        }
+	status = ixgbe_identify_module_generic(hw);
 
         return status;
 }

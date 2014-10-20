@@ -125,7 +125,6 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
         bool link_up;
 
         switch (hw->phy.media_type) {
-        case ixgbe_media_type_fiber_qsfp:
         case ixgbe_media_type_fiber:
                 hw->mac.ops.check_link(hw, &speed, &link_up, false);
                 /* if link is down, assume supported */
@@ -135,18 +134,6 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
                 else
                         supported = true;
                 break;
-        case ixgbe_media_type_backplane:
-                supported = true;
-                break;
-        case ixgbe_media_type_copper:
-                /* only some copper devices support flow control autoneg */
-                switch (hw->device_id) {
-                case IXGBE_DEV_ID_82599_T3_LOM:
-                        supported = true;
-                        break;
-                default:
-                        supported = false;
-                }
         default:
                 break;
         }
@@ -157,9 +144,7 @@ bool ixgbe_device_supports_autoneg_fc(struct ixgbe_hw *hw)
 static s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
 {
         s32 ret_val = 0;
-        u32 reg = 0, reg_bp = 0;
-        u16 reg_cu = 0;
-        bool locked = false;
+        u32 reg = 0;
 
         /*
          * Validate the requested mode.  Strict IEEE mode does not allow
@@ -183,21 +168,9 @@ static s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
          * we link at 10G, the 1G advertisement is harmless and vice versa.
          */
         switch (hw->phy.media_type) {
-        case ixgbe_media_type_backplane:
-                /* some MAC's need RMW protection on AUTOC */
-                ret_val = hw->mac.ops.prot_autoc_read(hw, &locked, &reg_bp);
-                if (ret_val != 0)
-                        goto out;
-
-                /* only backplane uses autoc so fall though */
-        case ixgbe_media_type_fiber_qsfp:
         case ixgbe_media_type_fiber:
                 reg = IXGBE_READ_REG(hw, IXGBE_PCS1GANA);
 
-                break;
-        case ixgbe_media_type_copper:
-                hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_ADVT,
-                                     IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &reg_cu);
                 break;
         default:
                 break;
@@ -217,11 +190,6 @@ static s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
         case ixgbe_fc_none:
                 /* Flow control completely disabled by software override. */
                 reg &= ~(IXGBE_PCS1GANA_SYM_PAUSE | IXGBE_PCS1GANA_ASM_PAUSE);
-                if (hw->phy.media_type == ixgbe_media_type_backplane)
-                        reg_bp &= ~(IXGBE_AUTOC_SYM_PAUSE |
-                                    IXGBE_AUTOC_ASM_PAUSE);
-                else if (hw->phy.media_type == ixgbe_media_type_copper)
-                        reg_cu &= ~(IXGBE_TAF_SYM_PAUSE | IXGBE_TAF_ASM_PAUSE);
                 break;
         case ixgbe_fc_tx_pause:
                 /*
@@ -230,13 +198,6 @@ static s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
                  */
                 reg |= IXGBE_PCS1GANA_ASM_PAUSE;
                 reg &= ~IXGBE_PCS1GANA_SYM_PAUSE;
-                if (hw->phy.media_type == ixgbe_media_type_backplane) {
-                        reg_bp |= IXGBE_AUTOC_ASM_PAUSE;
-                        reg_bp &= ~IXGBE_AUTOC_SYM_PAUSE;
-                } else if (hw->phy.media_type == ixgbe_media_type_copper) {
-                        reg_cu |= IXGBE_TAF_ASM_PAUSE;
-                        reg_cu &= ~IXGBE_TAF_SYM_PAUSE;
-                }
                 break;
         case ixgbe_fc_rx_pause:
                 /*
@@ -251,11 +212,6 @@ static s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
         case ixgbe_fc_full:
                 /* Flow control (both Rx and Tx) is enabled by SW override. */
                 reg |= IXGBE_PCS1GANA_SYM_PAUSE | IXGBE_PCS1GANA_ASM_PAUSE;
-                if (hw->phy.media_type == ixgbe_media_type_backplane)
-                        reg_bp |= IXGBE_AUTOC_SYM_PAUSE |
-                                  IXGBE_AUTOC_ASM_PAUSE;
-                else if (hw->phy.media_type == ixgbe_media_type_copper)
-                        reg_cu |= IXGBE_TAF_SYM_PAUSE | IXGBE_TAF_ASM_PAUSE;
                 break;
         default:
                 ret_val = IXGBE_ERR_CONFIG;
@@ -276,22 +232,6 @@ static s32 ixgbe_setup_fc(struct ixgbe_hw *hw)
                         reg &= ~IXGBE_PCS1GLCTL_AN_1G_TIMEOUT_EN;
 
                 IXGBE_WRITE_REG(hw, IXGBE_PCS1GLCTL, reg);
-        }
-
-        /*
-         * AUTOC restart handles negotiation of 1G and 10G on backplane
-         * and copper. There is no need to set the PCS1GCTL register.
-         *
-         */
-        if (hw->phy.media_type == ixgbe_media_type_backplane) {
-                reg_bp |= IXGBE_AUTOC_AN_RESTART;
-                ret_val = hw->mac.ops.prot_autoc_write(hw, reg_bp, locked);
-                if (ret_val)
-                        goto out;
-        } else if ((hw->phy.media_type == ixgbe_media_type_copper) &&
-                    (ixgbe_device_supports_autoneg_fc(hw))) {
-                hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_ADVT,
-                                      IXGBE_MDIO_AUTO_NEG_DEV_TYPE, reg_cu);
         }
 
 out:

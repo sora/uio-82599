@@ -824,11 +824,7 @@ static void uio_ixgbe_populate_info(struct uio_ixgbe_udapter *ud, struct uio_ixg
 
         memcpy(info->mac_addr, hw->mac.perm_addr, ETH_ALEN);
         info->mac_type = hw->mac.type;
-
         info->phy_type = hw->phy.type;
-        info->phy_addr = hw->phy.addr;
-        info->phy_id   = hw->phy.id;
-        info->phy_revision = hw->phy.revision;
 }
 
 static int uio_ixgbe_cmd_info(struct file *file, void __user *argp)
