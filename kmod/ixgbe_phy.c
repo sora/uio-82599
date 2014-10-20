@@ -72,28 +72,24 @@ s32 ixgbe_identify_phy_generic(struct ixgbe_hw *hw)
         u32 phy_addr;
         u16 ext_ability = 0;
 
+printk(KERN_INFO "hw->phy.type = %d\n", hw->phy.type);
         if (hw->phy.type == ixgbe_phy_unknown) {
+printk(KERN_INFO "ixgbe_phy_unknown\n");
                 for (phy_addr = 0; phy_addr < IXGBE_MAX_PHY_ADDR; phy_addr++) {
                         if (ixgbe_validate_phy_addr(hw, phy_addr)) {
                                 hw->phy.addr = phy_addr;
                                 ixgbe_get_phy_id(hw);
-                                hw->phy.type =
-                                        ixgbe_get_phy_type_from_id(hw->phy.id);
 
-                                if (hw->phy.type == ixgbe_phy_unknown) {
-                                        hw->phy.ops.read_reg(hw,
-                                                  IXGBE_MDIO_PHY_EXT_ABILITY,
-                                                  IXGBE_MDIO_PMA_PMD_DEV_TYPE,
-                                                  &ext_ability);
-                                        if (ext_ability &
-                                            (IXGBE_MDIO_PHY_10GBASET_ABILITY |
-                                             IXGBE_MDIO_PHY_1000BASET_ABILITY))
-                                                hw->phy.type =
-                                                         ixgbe_phy_cu_unknown;
-                                        else
-                                                hw->phy.type =
-                                                         ixgbe_phy_generic;
-                                }
+				hw->phy.ops.read_reg(hw,
+					IXGBE_MDIO_PHY_EXT_ABILITY,
+					IXGBE_MDIO_PMA_PMD_DEV_TYPE,
+					&ext_ability);
+				if (ext_ability &
+					(IXGBE_MDIO_PHY_10GBASET_ABILITY |
+					IXGBE_MDIO_PHY_1000BASET_ABILITY))
+					hw->phy.type = ixgbe_phy_cu_unknown;
+				else
+					hw->phy.type = ixgbe_phy_generic;
 
                                 status = 0;
                                 break;
@@ -209,6 +205,7 @@ bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr)
         if (phy_id != 0xFFFF && phy_id != 0x0)
                 valid = true;
 
+printk(KERN_INFO "ixgbe_validate_phy_addr = %d\n", valid);
         return valid;
 }
 
@@ -231,31 +228,6 @@ s32 ixgbe_get_phy_id(struct ixgbe_hw *hw)
                 hw->phy.revision = (u32)(phy_id_low & ~IXGBE_PHY_REVISION_MASK);
         }
         return status;
-}
-
-enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id)
-{
-        enum ixgbe_phy_type phy_type;
-
-        switch (phy_id) {
-        case TN1010_PHY_ID:
-                phy_type = ixgbe_phy_tn;
-                break;
-        case X540_PHY_ID:
-                phy_type = ixgbe_phy_aq;
-                break;
-        case QT2022_PHY_ID:
-                phy_type = ixgbe_phy_qt;
-                break;
-        case ATH_PHY_ID:
-                phy_type = ixgbe_phy_nl;
-                break;
-        default:
-                phy_type = ixgbe_phy_unknown;
-                break;
-        }
-
-        return phy_type;
 }
 
 s32 ixgbe_read_phy_reg_generic(struct ixgbe_hw *hw, u32 reg_addr,

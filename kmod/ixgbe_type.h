@@ -851,26 +851,8 @@ typedef u32 ixgbe_link_speed;
 enum ixgbe_phy_type {
         ixgbe_phy_unknown = 0,
         ixgbe_phy_none,
-        ixgbe_phy_tn,
-        ixgbe_phy_aq,
-        ixgbe_phy_cu_unknown,
-        ixgbe_phy_qt,
-        ixgbe_phy_xaui,
-        ixgbe_phy_nl,
-        ixgbe_phy_sfp_passive_tyco,
-        ixgbe_phy_sfp_passive_unknown,
-        ixgbe_phy_sfp_active_unknown,
-        ixgbe_phy_sfp_avago,
-        ixgbe_phy_sfp_ftl,
-        ixgbe_phy_sfp_ftl_active,
-        ixgbe_phy_sfp_unknown,
-        ixgbe_phy_sfp_intel,
-        ixgbe_phy_qsfp_passive_unknown,
-        ixgbe_phy_qsfp_active_unknown,
-        ixgbe_phy_qsfp_intel,
-        ixgbe_phy_qsfp_unknown,
-        ixgbe_phy_sfp_unsupported, /*Enforce bit set with unsupported module*/
-        ixgbe_phy_generic
+	ixgbe_phy_cu_unknown,
+	ixgbe_phy_generic
 };
 
 enum ixgbe_mac_type {

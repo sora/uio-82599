@@ -573,10 +573,6 @@ s32 ixgbe_identify_phy_82599(struct ixgbe_hw *hw){
                 status = 0;
         }
 
-        /* Return error if SFP module has been detected but is not supported */
-        if (hw->phy.type == ixgbe_phy_sfp_unsupported)
-                status = IXGBE_ERR_SFP_NOT_SUPPORTED;
-
         return status;
 }
 
