@@ -215,6 +215,7 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
                 }
                 pci_using_dac = 0;
         }
+printk(KERN_INFO "pci_using_dac = %d\n", pci_using_dac);
 
         err = pci_request_selected_regions(pdev, pci_select_bars(pdev,
                                            IORESOURCE_MEM), uio_ixgbe_driver_name);
