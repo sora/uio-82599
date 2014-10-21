@@ -21,12 +21,11 @@
 #include "uio_ixgbe.h"
 
 char uio_ixgbe_driver_name[]    = "uio-82599";
-char uio_ixgbe_driver_string[]  = "Intel ixgbe 82599 version of uio-ixgbe";
+char uio_ixgbe_driver_string[]  = "Intel ixgbe 82599 UIO driver";
 char uio_ixgbe_driver_version[] = "1.0";
-char uio_ixgbe_copyright[]      =
-"Copyright (c) 2009 Qualcomm Inc. Written by Max Krasnyansky <maxk@qualcomm.com>\n
-Copyright (c) 1999-2014 Intel Corporation.\n
-Copyright (c) 2014 by Yukito Ueno <eden@sfc.wide.ad.jp>";
+char uio_ixgbe_copyright1[] = "Copyright (c) 1999-2014 Intel Corporation.";
+char uio_ixgbe_copyright2[] = "Copyright (c) 2009 Qualcomm Inc.";
+char uio_ixgbe_copyright3[] = "Copyright (c) 2014 by Yukito Ueno <eden@sfc.wide.ad.jp>.";
 
 static DEFINE_PCI_DEVICE_TABLE(uio_ixgbe_pci_tbl) = {
         {PCI_VDEVICE(INTEL, IXGBE_DEV_ID_82599_SFP)},
@@ -1093,7 +1092,9 @@ static int __init uio_ixgbe_init_module(void)
 	int err;
 
 	printk(KERN_INFO "%s - version %s\n", uio_ixgbe_driver_string, uio_ixgbe_driver_version);
-	printk(KERN_INFO "%s\n", uio_ixgbe_copyright);
+	printk(KERN_INFO "%s\n", uio_ixgbe_copyright1);
+	printk(KERN_INFO "%s\n", uio_ixgbe_copyright2);
+	printk(KERN_INFO "%s\n", uio_ixgbe_copyright3);
 
 	err = pci_register_driver(&uio_ixgbe_driver);
 	if (!err) {
@@ -1120,6 +1121,6 @@ module_exit(uio_ixgbe_exit_module);
 /* ---- */
 
 MODULE_AUTHOR("Yukito Ueno <eden@sfc.wide.ad.jp>");
-MODULE_DESCRIPTION("Intel ixgbe 82599 version of uio-ixgbe");
+MODULE_DESCRIPTION("Intel ixgbe 82599 UIO driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("1.0");
