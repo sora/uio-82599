@@ -253,7 +253,6 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
 
         /* reset_hw fills in the perm_addr as well */
         err = hw->mac.ops.reset_hw(hw);
-
         if (err) {
                 IXGBE_ERR("HW Init failed: %d\n", err);
                 goto err_sw_init;

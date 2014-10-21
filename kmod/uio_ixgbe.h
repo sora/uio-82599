@@ -5,6 +5,7 @@
 #include <linux/types.h>
 #include <asm/page.h>
 
+#define DEBUG
 #ifdef DEBUG
 #define IXGBE_DBG(args...) printk(KERN_DEBUG "uio-ixgbe: " args)
 #else

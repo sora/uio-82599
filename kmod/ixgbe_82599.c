@@ -100,13 +100,20 @@ s32 ixgbe_reset_hw_82599(struct ixgbe_hw *hw){
 
 	/* Identify PHY and related function pointers */
 	status = hw->phy.ops.init(hw);
+	if(status != 0){
+		goto reset_hw_out;
+	}
 
         /* Setup SFP module if there is one present. */
         if (hw->phy.sfp_setup_needed) {
                 status = hw->mac.ops.setup_sfp(hw);
                 hw->phy.sfp_setup_needed = false;
-		IXGBE_DBG("detected SFP+: %d\n", hw->phy.sfp_type);
+		if(status != 0){
+			goto reset_hw_out;
+		}
         }
+
+	IXGBE_DBG("detected SFP+: %d\n", hw->phy.sfp_type);
 
 mac_reset_top:
         /*
