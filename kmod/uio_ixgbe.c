@@ -20,10 +20,13 @@
 #include "ixgbe_82599.h"
 #include "uio_ixgbe.h"
 
-char uio_ixgbe_driver_name[]    = "uio-ixgbe for 82599";
-char uio_ixgbe_driver_string[]  = "UIO-IXGBE kernel backend";
+char uio_ixgbe_driver_name[]    = "uio-82599";
+char uio_ixgbe_driver_string[]  = "Intel ixgbe 82599 version of uio-ixgbe";
 char uio_ixgbe_driver_version[] = "1.0";
-char uio_ixgbe_copyright[]      = "Copyright (c) 2009 Qualcomm Inc.";
+char uio_ixgbe_copyright[]      =
+"Copyright (c) 2009 Qualcomm Inc. Written by Max Krasnyansky <maxk@qualcomm.com>\n
+Copyright (c) 1999-2014 Intel Corporation.\n
+Copyright (c) 2014 by Yukito Ueno <eden@sfc.wide.ad.jp>";
 
 static DEFINE_PCI_DEVICE_TABLE(uio_ixgbe_pci_tbl) = {
         {PCI_VDEVICE(INTEL, IXGBE_DEV_ID_82599_SFP)},
@@ -1116,7 +1119,7 @@ module_exit(uio_ixgbe_exit_module);
 
 /* ---- */
 
-MODULE_AUTHOR("Maxim Krasnyanskiy <maxk@qualcomm.com>");
-MODULE_DESCRIPTION("UIO-IXGBE kernel backend");
+MODULE_AUTHOR("Yukito Ueno <eden@sfc.wide.ad.jp>");
+MODULE_DESCRIPTION("Intel ixgbe 82599 version of uio-ixgbe");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("1.0");
