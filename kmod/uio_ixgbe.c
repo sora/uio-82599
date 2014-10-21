@@ -199,23 +199,25 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
         if (err)
                 return err;
 
-        if (!dma_set_mask((struct device *)pdev, DMA_BIT_MASK(64)) &&
-            !dma_set_coherent_mask((struct device *)pdev, DMA_BIT_MASK(64))) {
-                pci_using_dac = 1;
-        } else {
-                err = dma_set_mask((struct device *)pdev, DMA_BIT_MASK(32));
-                if (err) {
-                        err = dma_set_coherent_mask((struct device *)pdev,
-                                                    DMA_BIT_MASK(32));
-                        if (err) {
-                                dev_err((struct device *)pdev, "No usable DMA "
-                                        "configuration, aborting\n");
-                                goto err_dma;
-                        }
-                }
-                pci_using_dac = 0;
-        }
-printk(KERN_INFO "pci_using_dac = %d\n", pci_using_dac);
+	/*
+	 * first argument of dma_set_mask(), &pdev->dev should be changed
+	 * on Linux kernel version.
+	 * Original ixgbe driver hides this issue with pci_dev_to_dev() macro.
+	 */
+        if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(64)) &&
+                !dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(64))){
+		pci_using_dac = 1;
+        }else{
+		err = dma_set_mask(&pdev->dev, DMA_BIT_MASK(32));
+		if(err){
+                	err = dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
+			if(err){
+				IXGBE_ERR("No usable DMA configuration, aborting\n");
+				goto err_dma;
+			}
+		}
+		pci_using_dac = 0;
+	}
 
         err = pci_request_selected_regions(pdev, pci_select_bars(pdev,
                                            IORESOURCE_MEM), uio_ixgbe_driver_name);
