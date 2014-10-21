@@ -105,6 +105,7 @@ s32 ixgbe_reset_hw_82599(struct ixgbe_hw *hw){
         if (hw->phy.sfp_setup_needed) {
                 status = hw->mac.ops.setup_sfp(hw);
                 hw->phy.sfp_setup_needed = false;
+		IXGBE_DBG("detected SFP+: %d\n", hw->phy.sfp_type);
         }
 
 mac_reset_top:
@@ -270,13 +271,10 @@ s32 ixgbe_init_phy_ops_82599(struct ixgbe_hw *hw){
 
         /* Identify the PHY or SFP module */
         ret_val = phy->ops.identify(hw);
-        if (ret_val == IXGBE_ERR_SFP_NOT_SUPPORTED)
-                goto init_phy_ops_out;
 
         /* Setup function pointers based on detected SFP module and speeds */
         ixgbe_init_mac_link_ops_82599(hw);
 
-init_phy_ops_out:
         return ret_val;
 }
 

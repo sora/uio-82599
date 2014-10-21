@@ -39,7 +39,7 @@ s32 ixgbe_identify_module_generic(struct ixgbe_hw *hw)
 		else
 			hw->phy.sfp_type = ixgbe_sfp_type_srlr_core1;
 
-		hw->phy.type = ixgbe_phy_sfp_unknown;
+		hw->phy.type = ixgbe_phy_generic;
 		if (hw->phy.sfp_type != stored_sfp_type)
 			hw->phy.sfp_setup_needed = true;
                 status = 0;

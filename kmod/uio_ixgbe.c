@@ -254,13 +254,7 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
         /* reset_hw fills in the perm_addr as well */
         err = hw->mac.ops.reset_hw(hw);
 
-        if (err == IXGBE_ERR_SFP_NOT_SUPPORTED) {
-                IXGBE_ERR("failed to load because an unsupported SFP+ or QSFP "
-                          "module type was detected.\n");
-                IXGBE_ERR("Reload the driver after installing a supported "
-                          "module.\n");
-                goto err_sw_init;
-        } else if (err) {
+        if (err) {
                 IXGBE_ERR("HW Init failed: %d\n", err);
                 goto err_sw_init;
         }

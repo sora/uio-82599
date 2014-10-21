@@ -850,7 +850,8 @@ typedef u32 ixgbe_link_speed;
 
 enum ixgbe_phy_type {
         ixgbe_phy_unknown = 0,
-        ixgbe_phy_sfp_unknown,
+	ixgbe_phy_none,
+	ixgbe_phy_generic
 };
 
 enum ixgbe_mac_type {
