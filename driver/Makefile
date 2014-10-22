@@ -4,7 +4,7 @@ EXTRA_CFLAGS := -Wall -Wunused-function
 # objects will be automatically built from the corresponding .c file -
 # no need to list the source files explicitly.
 obj-m := uio-ixgbe.o
-uio-ixgbe-objs := ixgbe_82599.o ixgbe_common.o ixgbe_phy.o uio_ixgbe.o
+uio-ixgbe-objs := ixgbe_82599.o ixgbe_common.o ixgbe_phy.o ixgbe_eeprom.o uio_ixgbe.o
 
 # KDIR is the location of the kernel source.  The current standard is
 # to link to the associated source tree from the directory containing

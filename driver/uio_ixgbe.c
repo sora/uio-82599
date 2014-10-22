@@ -18,6 +18,7 @@
 #include "ixgbe_type.h"
 #include "ixgbe_common.h"
 #include "ixgbe_82599.h"
+#include "ixgbe_eeprom.h"
 #include "uio_ixgbe.h"
 
 char uio_ixgbe_driver_name[]    = "uio-82599";
