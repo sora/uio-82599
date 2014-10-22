@@ -25,13 +25,11 @@
 #define UIO_DMA_INFO(args...) printk(KERN_INFO "uio-dma: " args)
 #define UIO_DMA_ERR(args...)  printk(KERN_ERR  "uio-dma: " args)
 
-#define VERSION "1.0"
-
-char uio_dma_driver_name[]    = "uio-dma";
-char uio_dma_driver_string[]  = "UIO DMA kernel backend";
-char uio_dma_driver_version[] = VERSION;
+char uio_dma_driver_name[]    = "dma-helper";
+char uio_dma_driver_string[]  = "DMA helper";
+char uio_dma_driver_version[] = "1.0";
 char uio_dma_copyright1[]      = "Copyright (c) 2009 Qualcomm Inc.";
-char uio_dma_copyright1[]      = "Copyright (c) 2014 Yukito Ueno <eden@sfc.wide.ad.jp>.";
+char uio_dma_copyright2[]      = "Copyright (c) 2014 Yukito Ueno <eden@sfc.wide.ad.jp>.";
 
 /* List of active devices */
 static struct list_head uio_dma_dev_list;
@@ -830,7 +828,8 @@ static int __init uio_dma_init_module(void)
 	mutex_init(&uio_dma_dev_mutex);
 
 	printk(KERN_INFO "%s - version %s\n", uio_dma_driver_string, uio_dma_driver_version);
-	printk(KERN_INFO "%s\n", uio_dma_copyright);
+	printk(KERN_INFO "%s\n", uio_dma_copyright1);
+	printk(KERN_INFO "%s\n", uio_dma_copyright2);
 
 	err = misc_register(&uio_dma_miscdev);
 	if (err) {
