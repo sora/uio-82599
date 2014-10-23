@@ -3,8 +3,8 @@ EXTRA_CFLAGS := -Wall -Wunused-function
 # obj-m is a list of what kernel modules to build.  The .o and other
 # objects will be automatically built from the corresponding .c file -
 # no need to list the source files explicitly.
-obj-m := uio-ixgbe.o
-uio-dma-objs := uio-dma.o
+obj-m := uio-dma.o
+uio-dma-objs := dma.o
 
 # KDIR is the location of the kernel source.  The current standard is
 # to link to the associated source tree from the directory containing

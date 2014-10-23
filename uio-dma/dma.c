@@ -14,7 +14,7 @@
 #include <linux/file.h>
 #include <asm/io.h>
 
-#include "uio-dma.h"
+#include "dma.h"
 
 #ifdef DBG
 #define UIO_DMA_DBG(args...) printk(KERN_DEBUG "uio-dma: " args)
@@ -500,11 +500,11 @@ static int uio_dma_cmd_addr(struct uio_dma_context *uc, void __user *argp){
                 return -EINVAL;
         }
 
-	first = (addr          & PAGE_MASK) >> PAGE_SHIFT;
-	last  = ((addr + size - 1) & PAGE_MASK) >> PAGE_SHIFT;
+	first = (req.addr          & PAGE_MASK) >> PAGE_SHIFT;
+	last  = ((req.addr + size - 1) & PAGE_MASK) >> PAGE_SHIFT;
 	/* Which one is correct? */
 	pages_num = last - first + 1;
-	pages_num = PAGE_ALIGN(size + (addr & ~PAGE_MASK)) >> PAGE_SHIFT;
+	pages_num = PAGE_ALIGN(size + (req.addr & ~PAGE_MASK)) >> PAGE_SHIFT;
 
 	page_list = kmalloc(pages_num * sizeof(struct page *), GFP_KERNEL);
 	if (!page_list)
@@ -727,6 +727,7 @@ static long uio_dma_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 	case UIO_DMA_ADDR:
 		err = uio_dma_cmd_addr(uc, argp);
 
+/*
 	case UIO_DMA_MAP:
 		err = uio_dma_cmd_map(uc, argp);
 		break;
@@ -734,6 +735,7 @@ static long uio_dma_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 	case UIO_DMA_UNMAP:
 		err = uio_dma_cmd_unmap(uc, argp);
 		break;
+*/
 
 	default:
 		err = -EINVAL;
