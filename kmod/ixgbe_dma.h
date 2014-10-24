@@ -16,6 +16,6 @@ struct ixgbe_dma_area {
 	unsigned long		mmap_offset;
 	unsigned long		size;
 	uint8_t			cache;
-	uint64_t		vaddr;
+	void			*vaddr;
 	dma_addr_t		paddr;
 };

@@ -384,14 +384,12 @@ err_dma:
 
 static void uio_ixgbe_remove(struct pci_dev *pdev){
 	struct uio_ixgbe_udapter *ud = pci_get_drvdata(pdev);
-	struct ixgbe_hw *hw = ud->hw;
 
 	if(ud->up){
 		uio_ixgbe_down(ud);
 	}
 
 	ixgbe_dma_mfree_all(ud);
-	iounmap(hw->hw_addr);
 	pci_release_selected_regions(pdev, pci_select_bars(pdev, IORESOURCE_MEM));
 	pci_disable_device(pdev);
 

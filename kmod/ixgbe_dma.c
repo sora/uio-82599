@@ -22,7 +22,7 @@ static struct list_head *ixgbe_dma_append_to_area(struct uio_ixgbe_udapter *ud,
 				uint64_t *offset, unsigned int size);
 static struct ixgbe_dma_area *ixgbe_dma_area_alloc(struct uio_ixgbe_udapter *ud,
 				unsigned int size, unsigned int numa_node, unsigned int cache);
-static void ixgbe_dma_area_free(struct ixgbe_dma_area *area);
+static void ixgbe_dma_area_free(struct uio_ixgbe_udapter *ud, struct ixgbe_dma_area *area);
 
 int ixgbe_dma_iobase(struct uio_ixgbe_udapter *ud){
 	struct ixgbe_hw *hw = ud->hw;
@@ -39,7 +39,7 @@ int ixgbe_dma_iobase(struct uio_ixgbe_udapter *ud){
 		return -ENOMEM;
 
 	atomic_set(&area->refcount, 1);
-	area->vaddr = (uint64_t)hw->hw_addr;
+	area->vaddr = hw->hw_addr;
 	area->paddr = ud->iobase >> PAGE_SHIFT;
 	area->size = ud->iolen;
 	area->cache = IXGBE_DMA_CACHE_DISABLE;
@@ -77,7 +77,7 @@ int ixgbe_dma_mfree(struct uio_ixgbe_udapter *ud, unsigned long mmap_offset){
 		return -ENOENT;
 
 	list_del(&area->list);
-	ixgbe_dma_area_free(area);
+	ixgbe_dma_area_free(ud, area);
 
 	return 0;
 }
@@ -87,7 +87,7 @@ void ixgbe_dma_mfree_all(struct uio_ixgbe_udapter *ud){
 
 	list_for_each_entry_safe(area, temp, &ud->areas, list) {
 		list_del(&area->list);
-		ixgbe_dma_area_free(area);
+		ixgbe_dma_area_free(ud, area);
 	}
 
 	return;
@@ -170,16 +170,23 @@ static struct ixgbe_dma_area *ixgbe_dma_area_alloc(struct uio_ixgbe_udapter *ud,
 	area->cache = cache;
 
 	set_dev_node(&pdev->dev, numa_node);
-	area->vaddr = (uint64_t)dma_alloc_coherent(&pdev->dev, size, &area->paddr, gfp);
+	area->vaddr = dma_alloc_coherent(&pdev->dev, size, &area->paddr, gfp);
 	set_dev_node(&pdev->dev, orig_node);
 
         return area;
 }
 
-static void ixgbe_dma_area_free(struct ixgbe_dma_area *area)
-{
-        if (atomic_dec_and_test(&area->refcount))
-                ixgbe_dma_area_free(area);
+static void ixgbe_dma_area_free(struct uio_ixgbe_udapter *ud, struct ixgbe_dma_area *area){
+	struct ixgbe_hw *hw = ud->hw;
+	struct pci_dev *pdev = ud->pdev;
+
+        if (atomic_dec_and_test(&area->refcount)){
+		if(area->mmap_offset == 0){
+			iounmap(hw->hw_addr);
+		}else{
+			dma_free_coherent(&pdev->dev, area->size, area->vaddr, area->paddr);
+		}
+	}
 
 	kfree(area);
 	return;
