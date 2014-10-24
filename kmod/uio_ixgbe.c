@@ -15,11 +15,12 @@
 #include <linux/sched.h>
 #include <asm/io.h>
 
+#include "uio_ixgbe.h"
 #include "ixgbe_type.h"
 #include "ixgbe_common.h"
 #include "ixgbe_82599.h"
 #include "ixgbe_eeprom.h"
-#include "uio_ixgbe.h"
+#include "ixgbe_dma.h"
 
 char uio_ixgbe_driver_name[]    = "uio-82599";
 char uio_ixgbe_driver_string[]  = "Intel ixgbe 82599 UIO driver";
@@ -41,6 +42,8 @@ static DEFINE_SEMAPHORE(dev_sem);
 
 static int uio_ixgbe_down(struct uio_ixgbe_udapter *ud);
 static void uio_ixgbe_populate_info(struct uio_ixgbe_udapter *ud, struct uio_ixgbe_info *info);
+static int uio_ixgbe_cmd_malloc(struct uio_ixgbe_udapter *ud, void __user *argp);
+static int uio_ixgbe_cmd_mfree(struct uio_ixgbe_udapter *ud, void __user *argp);
 void uio_ixgbe_reset(struct uio_ixgbe_udapter *ud);
 
 u16 ixgbe_read_pci_cfg_word(struct ixgbe_hw *hw, u32 reg){
@@ -246,11 +249,21 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
 	ud->iobase = pci_resource_start(pdev, 0);
 	ud->iolen  = pci_resource_len(pdev,   0);
 
+	if(pci_using_dac){
+		ud->dma_mask = DMA_BIT_MASK(64);
+	}else{
+		ud->dma_mask = DMA_BIT_MASK(32);
+	}
+
 	hw->hw_addr = ioremap(ud->iobase, ud->iolen);
 	if (!hw->hw_addr) {
 		err = -EIO;
 		goto err_ioremap;
 	}
+
+        /* setup for userland pci register access */
+	INIT_LIST_HEAD(&ud->areas);
+        ixgbe_dma_iobase(ud);
 
 	/* SOFTWARE INITIALIZATION */
         err = uio_ixgbe_sw_init(ud);
@@ -377,6 +390,7 @@ static void uio_ixgbe_remove(struct pci_dev *pdev){
 		uio_ixgbe_down(ud);
 	}
 
+	ixgbe_dma_mfree_all(ud);
 	iounmap(hw->hw_addr);
 	pci_release_selected_regions(pdev, pci_select_bars(pdev, IORESOURCE_MEM));
 	pci_disable_device(pdev);
@@ -548,8 +562,7 @@ static int uio_ixgbe_up(struct uio_ixgbe_udapter *ud){
         return 0;
 }
 
-static int uio_ixgbe_cmd_up(struct file *file, void __user *argp){
-	struct uio_ixgbe_udapter *ud = file->private_data;
+static int uio_ixgbe_cmd_up(struct uio_ixgbe_udapter *ud, void __user *argp){
 	struct uio_ixgbe_open_req req;
 	int err = 0;
 
@@ -854,6 +867,42 @@ out:
         return err;
 }
 
+static int uio_ixgbe_cmd_malloc(struct uio_ixgbe_udapter *ud, void __user *argp){
+	struct uio_ixgbe_malloc_req req;
+	int ret;
+
+        if (copy_from_user(&req, argp, sizeof(req)))
+                return -EFAULT;
+
+	if (!req.size)
+		return -EINVAL;
+
+	ret = ixgbe_dma_malloc(ud, &req);
+	if(ret != 0)
+		return ret;
+
+	if (copy_to_user(argp, &req, sizeof(req))) {
+		ixgbe_dma_mfree(ud, req.mmap_offset);
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+static int uio_ixgbe_cmd_mfree(struct uio_ixgbe_udapter *ud, void __user *argp){
+	struct uio_ixgbe_mfree_req req;
+	int ret;
+
+        if (copy_from_user(&req, argp, sizeof(req)))
+                return -EFAULT;
+
+	ret = ixgbe_dma_mfree(ud, req.mmap_offset);
+	if(ret != 0)
+		return ret;
+
+	return 0;
+}
+
 static long uio_ixgbe_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct uio_ixgbe_udapter *ud = file->private_data;
@@ -879,7 +928,15 @@ static long uio_ixgbe_ioctl(struct file *file, unsigned int cmd, unsigned long a
 
 	switch (cmd) {
 	case UIO_IXGBE_UP:
-		err = uio_ixgbe_cmd_up(file, argp);
+		err = uio_ixgbe_cmd_up(ud, argp);
+		break;
+
+	case UIO_IXGBE_MALLOC:
+		err = uio_ixgbe_cmd_malloc(ud, argp);
+		break;
+
+	case UIO_IXGBE_MFREE:
+		err = uio_ixgbe_cmd_mfree(ud, argp);
 		break;
 
 	case UIO_IXGBE_DOWN:
@@ -1032,24 +1089,42 @@ static struct vm_operations_struct uio_ixgbe_mmap_ops = {
 static int uio_ixgbe_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct uio_ixgbe_udapter *ud = file->private_data;
+	struct ixgbe_dma_area *area;
 
 	unsigned long start = vma->vm_start;
 	unsigned long size  = vma->vm_end - vma->vm_start;
-	unsigned long pgoff = vma->vm_pgoff;
-	unsigned long pfn;
+	unsigned long offset = vma->vm_pgoff * PAGE_SIZE;
 
 	if (!ud)
 		return -ENODEV;
 
-	IXGBE_DBG("mmap ud %p start %lu size %lu pgoff %lu\n", ud, start, size, pgoff);
+	IXGBE_DBG("mmap ud %p start %lu size %lu\n", ud, start, size);
 
-	if (pgoff)
-		return -EINVAL;
+        area = ixgbe_dma_area_lookup(ud, offset);
+        if (!area)
+                return -ENOENT;
 
-	pfn = ud->iobase >> PAGE_SHIFT;
+	// We do not do partial mappings, sorry
+	if (area->size != size)
+		return -EOVERFLOW;
 
-	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-	if (remap_pfn_range(vma, start, pfn, size, vma->vm_page_prot))
+        switch (area->cache) {
+        case IXGBE_DMA_CACHE_DISABLE:
+                vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+                break;
+
+        case IXGBE_DMA_CACHE_WRITECOMBINE:
+		#ifdef pgprot_writecombine
+                vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
+		#endif
+                break;
+
+        default:
+                /* Leave as is */
+                break;
+        }
+
+	if (remap_pfn_range(vma, start, area->paddr, size, vma->vm_page_prot))
 		return -EAGAIN;
 
 	vma->vm_ops = &uio_ixgbe_mmap_ops;

@@ -28,6 +28,7 @@
 
 struct uio_ixgbe_udapter {
 	struct list_head	list;
+	struct list_head	areas;
 	unsigned int		id;
 	uint8_t			removed;
 	uint8_t			up;
@@ -36,6 +37,7 @@ struct uio_ixgbe_udapter {
 	spinlock_t		lock;
 	atomic_t		refcount;
 
+	uint64_t		dma_mask;
 	struct pci_dev		*pdev;
 	unsigned long		iobase;
 	unsigned long		iolen;
@@ -97,7 +99,18 @@ struct uio_ixgbe_link_req {
 			   * after link state changed */
 };
 
-#define IXGBESETDEBUG   _IOW('E', 220, int)
+#define UIO_IXGBE_MALLOC _IOW('U', 208, int)
+struct uio_ixgbe_malloc_req {
+	uint64_t mmap_offset;
+	uint32_t size;
+        uint16_t numa_node;
+        uint16_t cache;
+};
+
+#define UIO_IXGBE_MFREE  _IOW('U', 209, int)
+struct uio_ixgbe_mfree_req {
+        uint64_t mmap_offset;
+};
 
 u16 ixgbe_read_pci_cfg_word(struct ixgbe_hw *hw, u32 reg);
 
