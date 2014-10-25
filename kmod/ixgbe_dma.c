@@ -18,7 +18,7 @@
 #include "ixgbe_type.h"
 #include "ixgbe_dma.h"
 
-static struct list_head *ixgbe_dma_append_to_area(struct uio_ixgbe_udapter *ud,
+static struct list_head *ixgbe_dma_area_whereto(struct uio_ixgbe_udapter *ud,
 				uint64_t *offset, unsigned int size);
 static struct ixgbe_dma_area *ixgbe_dma_area_alloc(struct uio_ixgbe_udapter *ud,
 				unsigned int size, unsigned int numa_node, unsigned int cache);
@@ -30,7 +30,7 @@ int ixgbe_dma_iobase(struct uio_ixgbe_udapter *ud){
 	struct ixgbe_dma_area *area;
 	uint64_t offset = 0;
 
-	where = ixgbe_dma_append_to_area(ud, &offset, ud->iolen);
+	where = ixgbe_dma_area_whereto(ud, &offset, ud->iolen);
 	if(!where)
 		return -EBUSY;
 
@@ -54,7 +54,7 @@ int ixgbe_dma_malloc(struct uio_ixgbe_udapter *ud, struct uio_ixgbe_malloc_req *
 	struct list_head *where;
 	struct ixgbe_dma_area *area;
 
-        where = ixgbe_dma_append_to_area(ud, &req->mmap_offset, req->size);
+        where = ixgbe_dma_area_whereto(ud, &req->mmap_offset, req->size);
         if (!where)
                 return -EBUSY;
 
@@ -107,43 +107,45 @@ struct ixgbe_dma_area *ixgbe_dma_area_lookup(struct uio_ixgbe_udapter *ud, uint6
         return NULL;
 }
 
-static struct list_head *ixgbe_dma_append_to_area(struct uio_ixgbe_udapter *ud,
+static struct list_head *ixgbe_dma_area_whereto(struct uio_ixgbe_udapter *ud,
 						uint64_t *offset, unsigned int size){
-        unsigned long start, end, astart, aend;
+        unsigned long start_new, end_new;
+	unsigned long start_area, end_area;
         struct ixgbe_dma_area *area;
         struct list_head *last;
 
-        start = *offset;
-        end   = start + size;
+        start_new = *offset;
+        end_new   = start_new + size;
 
-        IXGBE_DBG("adding area. context %p start %lu end %lu\n", ud, start, end);
+        IXGBE_DBG("adding area. context %p start %lu end %lu\n", ud, start_new, end_new);
 
         last  = &ud->areas;
 
         list_for_each_entry(area, &ud->areas, list) {
-                astart = area->mmap_offset;
-                aend   = astart + area->size;
+                start_area = area->mmap_offset;
+                end_area   = start_area + area->size;
 
-                IXGBE_DBG("checking area. context %p start %lu end %lu\n", ud, astart, aend);
+                IXGBE_DBG("checking area. context %p start %lu end %lu\n",
+			ud, start_area, end_area);
 
                 /* Since the list is sorted we know at this point that
                  * new area goes before this one. */
-                if (end <= astart)
+                if (end_new <= start_area)
                         break;
 
                 last = &area->list;
 
-                if ((start >= astart && start < aend) ||
-                                (end > astart && end <= aend)) {
+                if ((start_new >= start_area && start_new < end_area) ||
+                                (end_new > start_area && end_new <= end_area)) {
                         /* Found overlap. Set start to the end of the current
                          * area and keep looking. */
-                        start = aend;
-                        end   = start + size;
+                        start_new = end_area;
+                        end_new   = start_new + size;
                         continue;
                 }
         }
 
-        *offset = start;
+        *offset = start_new;
         return last;
 }
 
