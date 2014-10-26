@@ -861,8 +861,11 @@ static void uio_ixgbe_populate_info(struct uio_ixgbe_udapter *ud, struct uio_ixg
 
 	info->num_rx_queues = ud->num_rx_queues;
 	info->num_tx_queues = ud->num_tx_queues;
+
+	/* Currently we support only RX/TX RSS mode */
 	info->max_rx_queues = IXGBE_MAX_RSS_INDICES;
 	info->max_tx_queues = IXGBE_MAX_RSS_INDICES;
+
 	info->max_msix_vectors = hw->mac.max_msix_vectors;
 }
 
