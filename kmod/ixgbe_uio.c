@@ -386,6 +386,7 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
 	}
 
 	ud->miscdev = miscdev;
+	ud->minor = miscdev->minor;
 	IXGBE_INFO("misc device registered as %s\n", miscdev->name);
 
 	return 0;
