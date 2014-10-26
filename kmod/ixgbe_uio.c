@@ -85,8 +85,6 @@ static int uio_ixgbe_alloc_enid(void){
         unsigned int id = 0;
 
         list_for_each_entry(ud, &dev_list, list) {
-                if (ud->id != id)
-                        return id;
                 id++;
         }
 
@@ -367,7 +365,7 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
 	IXGBE_INFO("device[%u] %s dma mask %llx\n", ud->id, pci_name(pdev),
 		(unsigned long long) pdev->dma_mask);
 
-	miscdev = kmalloc(sizeof(struct uio_ixgbe_udapter), GFP_KERNEL);
+	miscdev = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
         if (!miscdev){
 		goto err_misc_register_alloc;
         }
@@ -388,6 +386,7 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
 	}
 
 	ud->miscdev = miscdev;
+	IXGBE_INFO("misc device registered as %s\n", miscdev->name);
 
 	return 0;
 
@@ -418,6 +417,7 @@ static void uio_ixgbe_remove(struct pci_dev *pdev){
 	}
 
 	misc_deregister(miscdev);
+	IXGBE_INFO("misc device %s unregistered\n", miscdev->name);
 	kfree(miscdev->name);
 	kfree(miscdev);
 
