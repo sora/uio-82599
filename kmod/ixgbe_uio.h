@@ -14,6 +14,7 @@
 #define IXGBE_INFO(args...) printk(KERN_INFO "uio-ixgbe: " args)
 #define IXGBE_ERR(args...)  printk(KERN_ERR  "uio-ixgbe: " args)
 
+#define MISCDEV_NAME_SIZE	16
 #define IXGBE_10K_ITR		400
 #define IXGBE_20K_ITR		200
 #define MIN_MSIX_Q_VECTORS	1
@@ -32,6 +33,9 @@ struct uio_ixgbe_udapter {
 	unsigned int		id;
 	uint8_t			removed;
 	uint8_t			up;
+
+	struct miscdevice	*miscdev;
+	int			minor;
 
 	struct semaphore	sem;
 	spinlock_t		lock;
@@ -56,12 +60,6 @@ struct uio_ixgbe_udapter {
 	uint32_t		eicr;
 };
 
-/* Ioctl defines */
-#define UIO_IXGBE_BIND       _IOW('E', 200, int)
-struct uio_ixgbe_bind_req {
-	char      name[20];
-};
-
 /* MAC and PHY info */
 struct uio_ixgbe_info {
 	uint32_t	irq;
@@ -79,9 +77,10 @@ struct uio_ixgbe_info {
 	uint32_t	max_msix_vectors;
 };
 
+/* Ioctl defines */
+
 #define UIO_IXGBE_INFO       _IOW('E', 201, int)
 struct uio_ixgbe_info_req {
-	char              name[20];
 	struct uio_ixgbe_info info;
 };
 

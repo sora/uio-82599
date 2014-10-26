@@ -22,12 +22,40 @@
 #include "ixgbe_eeprom.h"
 #include "ixgbe_dma.h"
 
+static int uio_ixgbe_down(struct uio_ixgbe_udapter *ud);
+static void uio_ixgbe_populate_info(struct uio_ixgbe_udapter *ud, struct uio_ixgbe_info *info);
+static int uio_ixgbe_cmd_malloc(struct uio_ixgbe_udapter *ud, void __user *argp);
+static int uio_ixgbe_cmd_mfree(struct uio_ixgbe_udapter *ud, void __user *argp);
+static void uio_ixgbe_reset(struct uio_ixgbe_udapter *ud);
+static irqreturn_t uio_ixgbe_interrupt(int irq, void *data);
+static ssize_t uio_ixgbe_read(struct file * file, char __user * buf,
+                            size_t count, loff_t *pos);
+static ssize_t uio_ixgbe_write(struct file * file, const char __user * buf,
+                             size_t count, loff_t *pos);
+static unsigned int uio_ixgbe_poll(struct file *file, poll_table *wait);
+static int uio_ixgbe_open(struct inode *inode, struct file * file);
+static int uio_ixgbe_close(struct inode *inode, struct file *file);
+static int uio_ixgbe_mmap(struct file *file, struct vm_area_struct *vma);
+static long uio_ixgbe_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
+
 char uio_ixgbe_driver_name[]    = "uio-82599";
 char uio_ixgbe_driver_string[]  = "Intel ixgbe 82599 UIO driver";
 char uio_ixgbe_driver_version[] = "1.0";
 char uio_ixgbe_copyright1[] = "Copyright (c) 1999-2014 Intel Corporation.";
 char uio_ixgbe_copyright2[] = "Copyright (c) 2009 Qualcomm Inc.";
 char uio_ixgbe_copyright3[] = "Copyright (c) 2014 by Yukito Ueno <eden@sfc.wide.ad.jp>.";
+
+static struct file_operations uio_ixgbe_fops = {
+	.owner   = THIS_MODULE,
+	.llseek  = no_llseek,
+	.read    = uio_ixgbe_read,
+	.write   = uio_ixgbe_write,
+	.poll    = uio_ixgbe_poll,
+	.open    = uio_ixgbe_open,
+	.release = uio_ixgbe_close,
+	.mmap    = uio_ixgbe_mmap,
+	.unlocked_ioctl = uio_ixgbe_ioctl,
+};
 
 static DEFINE_PCI_DEVICE_TABLE(uio_ixgbe_pci_tbl) = {
         {PCI_VDEVICE(INTEL, IXGBE_DEV_ID_82599_SFP)},
@@ -39,13 +67,6 @@ MODULE_DEVICE_TABLE(pci, uio_ixgbe_pci_tbl);
 
 static LIST_HEAD(dev_list);
 static DEFINE_SEMAPHORE(dev_sem);
-
-static int uio_ixgbe_down(struct uio_ixgbe_udapter *ud);
-static void uio_ixgbe_populate_info(struct uio_ixgbe_udapter *ud, struct uio_ixgbe_info *info);
-static int uio_ixgbe_cmd_malloc(struct uio_ixgbe_udapter *ud, void __user *argp);
-static int uio_ixgbe_cmd_mfree(struct uio_ixgbe_udapter *ud, void __user *argp);
-void uio_ixgbe_reset(struct uio_ixgbe_udapter *ud);
-static irqreturn_t uio_ixgbe_interrupt(int irq, void *data);
 
 u16 ixgbe_read_pci_cfg_word(struct ixgbe_hw *hw, u32 reg){
         struct uio_ixgbe_udapter *ud = hw->back;
@@ -72,40 +93,16 @@ static int uio_ixgbe_alloc_enid(void){
         return id;
 }
 
-static struct uio_ixgbe_udapter *uio_ixgbe_lookup_enid(char *_id)
-{
-        struct uio_ixgbe_udapter *ud;
-        unsigned int id = simple_strtol(_id, NULL, 10);
+static struct uio_ixgbe_udapter *uio_ixgbe_lookup_minorid(int minor){
+	struct uio_ixgbe_udapter *ud;
 
-        list_for_each_entry(ud, &dev_list, list) {
-                if (ud->id == id)
-                        return ud;
-        }
+	list_for_each_entry(ud, &dev_list, list){
+		if(ud->minor == minor){
+			return ud;
+		}
+	}
 
-        return NULL;
-}
-
-static struct uio_ixgbe_udapter *uio_ixgbe_lookup_pciid(char *id)
-{
-        struct uio_ixgbe_udapter *ud;
-
-        list_for_each_entry(ud, &dev_list, list) {
-                if (!strcmp(pci_name(ud->pdev), id))
-                        return ud;
-        }
-
-        return NULL;
-}
-
-static struct uio_ixgbe_udapter *uio_ixgbe_lookup_ud(char *id)
-{
-        switch (id[0]) {
-        case '#':
-                return uio_ixgbe_lookup_enid(id + 1);
-
-        default:
-                return uio_ixgbe_lookup_pciid(id);
-        }
+	return NULL;
 }
 
 static int uio_ixgbe_udapter_inuse(struct uio_ixgbe_udapter *ud)
@@ -193,6 +190,8 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
 {
 	struct uio_ixgbe_udapter *ud;
 	struct ixgbe_hw *hw;
+	struct miscdevice *miscdev;
+	char *miscdev_name;
         u16 offset = 0, eeprom_verh = 0, eeprom_verl = 0;
         u16 eeprom_cfg_blkh = 0, eeprom_cfg_blkl = 0;
         u32 etrack_id;
@@ -368,8 +367,35 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
 	IXGBE_INFO("device[%u] %s dma mask %llx\n", ud->id, pci_name(pdev),
 		(unsigned long long) pdev->dma_mask);
 
+	miscdev = kmalloc(sizeof(struct uio_ixgbe_udapter), GFP_KERNEL);
+        if (!miscdev){
+		goto err_misc_register_alloc;
+        }
+
+	miscdev_name = kmalloc(MISCDEV_NAME_SIZE, GFP_KERNEL);
+	if(!miscdev_name){
+		goto err_misc_register_alloc_name;
+	}
+	snprintf(miscdev_name, MISCDEV_NAME_SIZE, "ixgbe%d", ud->id);
+
+	miscdev->minor = MISC_DYNAMIC_MINOR;
+	miscdev->name = miscdev_name;
+	miscdev->fops = &uio_ixgbe_fops;
+	err = misc_register(miscdev);
+	if (err) {
+		IXGBE_ERR("failed to register misc device\n");
+		goto err_misc_register;
+	}
+
+	ud->miscdev = miscdev;
+
 	return 0;
 
+err_misc_register:
+	kfree(miscdev->name);
+err_misc_register_alloc_name:
+	kfree(miscdev);
+err_misc_register_alloc:
 err_sw_init:
 	iounmap(hw->hw_addr);
 err_ioremap:
@@ -385,10 +411,15 @@ err_dma:
 
 static void uio_ixgbe_remove(struct pci_dev *pdev){
 	struct uio_ixgbe_udapter *ud = pci_get_drvdata(pdev);
+	struct miscdevice *miscdev = ud->miscdev;
 
 	if(ud->up){
 		uio_ixgbe_down(ud);
 	}
+
+	misc_deregister(miscdev);
+	kfree(miscdev->name);
+	kfree(miscdev);
 
 	ixgbe_dma_mfree_all(ud);
 	pci_release_selected_regions(pdev, pci_select_bars(pdev, IORESOURCE_MEM));
@@ -680,7 +711,8 @@ static int uio_ixgbe_cmd_down(struct uio_ixgbe_udapter *ud, unsigned long arg){
 	return 0;
 }
 
-void uio_ixgbe_reset(struct uio_ixgbe_udapter *ud){
+static void uio_ixgbe_reset(struct uio_ixgbe_udapter *ud)
+{
         struct ixgbe_hw *hw = ud->hw;
         int err;
 
@@ -724,40 +756,6 @@ static int uio_ixgbe_cmd_reset(struct uio_ixgbe_udapter *ud, unsigned long arg){
 	return 0;
 }
 
-
-static int uio_ixgbe_cmd_bind(struct file *file, void __user *argp)
-{
-        struct uio_ixgbe_udapter *ud;
-        struct uio_ixgbe_bind_req req;
-        int err;
-
-        if (copy_from_user(&req, argp, sizeof(req)))
-                return -EFAULT;
-
-        IXGBE_DBG("bind req name %s\n", req.name);
-
-        down(&dev_sem);
-
-        ud = uio_ixgbe_lookup_ud(req.name);
-        if (!ud) {
-                err = -ENOENT;
-                goto out;
-        }
-
-        // Only one process is alowed to bind
-        if (uio_ixgbe_udapter_inuse(ud)) {
-                err = -EBUSY;
-                goto out;
-        }
-
-        uio_ixgbe_udapter_get(ud);
-        file->private_data = ud;
-        err = 0;
-
-out:
-        up(&dev_sem);
-        return err;
-}
 
 static int uio_ixgbe_cmd_check_link(struct uio_ixgbe_udapter *ud, void __user *argp){
 	struct ixgbe_hw *hw = ud->hw;
@@ -869,24 +867,17 @@ static void uio_ixgbe_populate_info(struct uio_ixgbe_udapter *ud, struct uio_ixg
 	info->max_msix_vectors = hw->mac.max_msix_vectors;
 }
 
-static int uio_ixgbe_cmd_info(struct file *file, void __user *argp)
+static int uio_ixgbe_cmd_info(struct uio_ixgbe_udapter *ud, void __user *argp)
 {
-        struct uio_ixgbe_udapter *ud;
         struct uio_ixgbe_info_req req;
         int err;
 
         if (copy_from_user(&req, argp, sizeof(req)))
                 return -EFAULT;
 
-        IXGBE_DBG("info req name %s\n", req.name);
+        IXGBE_DBG("info req ctx=%p\n", ud);
 
         down(&dev_sem);
-
-        ud = uio_ixgbe_lookup_ud(req.name);
-        if (!ud) {
-                err = -ENOENT;
-                goto out;
-        }
 
         err = 0;
         uio_ixgbe_populate_info(ud, &req.info);
@@ -945,22 +936,16 @@ static long uio_ixgbe_ioctl(struct file *file, unsigned int cmd, unsigned long a
 
 	IXGBE_DBG("ioctl cmd=%d arg=%lu ud=%p\n", cmd, arg, ud);
 
-	if (cmd == UIO_IXGBE_INFO)
-		return uio_ixgbe_cmd_info(file, argp);
-
-	if (cmd == UIO_IXGBE_BIND) {
-		if (ud)
-			return -EALREADY;
-
-		return uio_ixgbe_cmd_bind(file, argp);
-	}
-
-	if (!ud)
+	if(!ud)
 		return -EBADFD;
 
 	down(&ud->sem);
 
 	switch (cmd) {
+	case UIO_IXGBE_INFO:
+                err = uio_ixgbe_cmd_info(ud, argp);
+		break;
+
 	case UIO_IXGBE_UP:
 		err = uio_ixgbe_cmd_up(ud, argp);
 		break;
@@ -1081,8 +1066,33 @@ static ssize_t uio_ixgbe_write(struct file * file, const char __user * buf,
 
 static int uio_ixgbe_open(struct inode *inode, struct file * file)
 {
-	file->private_data = NULL;
-	return 0;
+        struct uio_ixgbe_udapter *ud;
+	struct miscdevice *miscdev = file->private_data;
+        int err;
+
+        IXGBE_DBG("open req miscdev=%p\n", miscdev);
+
+        down(&dev_sem);
+
+	ud = uio_ixgbe_lookup_minorid(miscdev->minor);
+        if (!ud) {
+                err = -ENOENT;
+                goto out;
+        }
+
+        // Only one process is alowed to bind
+        if (uio_ixgbe_udapter_inuse(ud)) {
+                err = -EBUSY;
+                goto out;
+        }
+
+        uio_ixgbe_udapter_get(ud);
+        file->private_data = ud;
+        err = 0;
+
+out:
+        up(&dev_sem);
+        return err;
 }
 
 static int uio_ixgbe_close(struct inode *inode, struct file *file)
@@ -1165,24 +1175,6 @@ static int uio_ixgbe_mmap(struct file *file, struct vm_area_struct *vma)
 	return 0;
 }
 
-static struct file_operations uio_ixgbe_fops = {
-	.owner	 = THIS_MODULE,
-	.llseek  = no_llseek,
-	.read	 = uio_ixgbe_read,
-	.write	 = uio_ixgbe_write,
-	.poll	 = uio_ixgbe_poll,
-	.open	 = uio_ixgbe_open,
-	.release = uio_ixgbe_close,
-	.mmap	 = uio_ixgbe_mmap,
-	.unlocked_ioctl = uio_ixgbe_ioctl,
-};
-
-static struct miscdevice uio_ixgbe_miscdev = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = "uio-ixgbe",
-	.fops = &uio_ixgbe_fops,
-};
-
 static struct pci_error_handlers uio_ixgbe_err_handler = {
 	.error_detected = uio_ixgbe_io_error_detected,
 	.slot_reset     = uio_ixgbe_io_slot_reset,
@@ -1207,21 +1199,11 @@ static int __init uio_ixgbe_init_module(void)
 	printk(KERN_INFO "%s\n", uio_ixgbe_copyright3);
 
 	err = pci_register_driver(&uio_ixgbe_driver);
-	if (!err) {
-		err = misc_register(&uio_ixgbe_miscdev);
-		if (err) {
-			IXGBE_ERR("failed to register misc device\n");
-			pci_unregister_driver(&uio_ixgbe_driver);
-			return err;
-		}
-	}
-
 	return err;
 }
 
 static void __exit uio_ixgbe_exit_module(void)
 {
-	misc_deregister(&uio_ixgbe_miscdev);
 	pci_unregister_driver(&uio_ixgbe_driver);
 }
 
