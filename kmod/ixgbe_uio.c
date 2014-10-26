@@ -473,13 +473,12 @@ static int uio_ixgbe_configure_msix(struct uio_ixgbe_udapter *ud){
 	int vector, vector_num, queue_idx, err;
 	struct ixgbe_hw *hw = ud->hw;
 
-	vector_num = ud->num_queues;
+	vector_num = ud->num_rx_queues + ud->num_tx_queues;
 	if(vector_num > hw->mac.max_msix_vectors){
 		return -1;
 	}
 
 	ud->msix_entries = kcalloc(vector_num, sizeof(struct msix_entry), GFP_KERNEL);
-
 	if (!ud->msix_entries) {
 		return -1;
 	}
@@ -498,10 +497,10 @@ static int uio_ixgbe_configure_msix(struct uio_ixgbe_udapter *ud){
 			return -1;
                	}
         }
-
+	ud->num_q_vectors = vector_num;
+	
 	vector = 0;
-
-	for(queue_idx = 0; queue_idx < ud->num_queues; queue_idx++){
+	for(queue_idx = 0; queue_idx < ud->num_rx_queues; queue_idx++){
 		struct msix_entry *entry = &ud->msix_entries[vector];
                 err = request_irq(entry->vector, &uio_ixgbe_interrupt,
 				0, pci_name(ud->pdev), ud);
@@ -511,16 +510,25 @@ static int uio_ixgbe_configure_msix(struct uio_ixgbe_udapter *ud){
 
 		/* set RX queue interrupt */
 		uio_ixgbe_set_ivar(ud, 0, queue_idx, entry->vector);
-
-		/* set TX queue interrupt */
-		uio_ixgbe_set_ivar(ud, 1, queue_idx, entry->vector);
-
 		uio_ixgbe_write_eitr(ud, entry->vector);
 
 		vector++;
 	}
+        for(queue_idx = 0; queue_idx < ud->num_tx_queues; queue_idx++){
+                struct msix_entry *entry = &ud->msix_entries[vector];
+                err = request_irq(entry->vector, &uio_ixgbe_interrupt,
+                                0, pci_name(ud->pdev), ud);
+                if(err){
+                        return -1;
+                }
 
-	ud->num_q_vectors = vector_num;
+                /* set TX queue interrupt */
+                uio_ixgbe_set_ivar(ud, 1, queue_idx, entry->vector);
+                uio_ixgbe_write_eitr(ud, entry->vector);
+
+                vector++;
+        }
+
 	return 0;
 }
 
@@ -569,7 +577,6 @@ static int uio_ixgbe_up(struct uio_ixgbe_udapter *ud){
 
 static int uio_ixgbe_cmd_up(struct uio_ixgbe_udapter *ud, void __user *argp){
 	struct uio_ixgbe_up_req req;
-	struct ixgbe_hw *hw = ud->hw;
 	int err = 0;
 
         if(ud->removed){
@@ -585,11 +592,16 @@ static int uio_ixgbe_cmd_up(struct uio_ixgbe_udapter *ud, void __user *argp){
 
 	IXGBE_DBG("open req\n");
 
-	if(req.info.num_queues >
-		min(hw->mac.max_rx_queues, hw->mac.max_tx_queues)){
+	if(req.info.num_rx_queues > IXGBE_MAX_RSS_INDICES){
 		return -EINVAL;
 	}
-	ud->num_queues = req.info.num_queues;
+
+        if(req.info.num_tx_queues > IXGBE_MAX_RSS_INDICES){
+                return -EINVAL;
+        }
+
+	ud->num_rx_queues = req.info.num_rx_queues;
+	ud->num_tx_queues = req.info.num_tx_queues;
 
         err = uio_ixgbe_up(ud);
         if (err){
@@ -847,8 +859,10 @@ static void uio_ixgbe_populate_info(struct uio_ixgbe_udapter *ud, struct uio_ixg
         info->mac_type = hw->mac.type;
         info->phy_type = hw->phy.type;
 
-	info->num_queues = ud->num_queues;
-	info->max_queues = min(hw->mac.max_rx_queues, hw->mac.max_tx_queues);
+	info->num_rx_queues = ud->num_rx_queues;
+	info->num_tx_queues = ud->num_tx_queues;
+	info->max_rx_queues = IXGBE_MAX_RSS_INDICES;
+	info->max_tx_queues = IXGBE_MAX_RSS_INDICES;
 	info->max_msix_vectors = hw->mac.max_msix_vectors;
 }
 
