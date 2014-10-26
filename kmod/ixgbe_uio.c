@@ -599,7 +599,7 @@ static int uio_ixgbe_up(struct uio_ixgbe_udapter *ud){
 }
 
 static int uio_ixgbe_cmd_up(struct uio_ixgbe_udapter *ud, void __user *argp){
-	struct uio_ixgbe_open_req req;
+	struct uio_ixgbe_up_req req;
 	int err = 0;
 
         if(ud->removed){
@@ -614,6 +614,9 @@ static int uio_ixgbe_cmd_up(struct uio_ixgbe_udapter *ud, void __user *argp){
 		return -EFAULT;
 
 	IXGBE_DBG("open req\n");
+	ud->num_rx_queues = req.num_rx_queues;
+	ud->num_tx_queues = req.num_tx_queues;
+
         err = uio_ixgbe_up(ud);
         if (err){
                 goto err_up_complete;
