@@ -15,7 +15,7 @@
 #include <linux/sched.h>
 #include <asm/io.h>
 
-#include "uio_ixgbe.h"
+#include "ixgbe_uio.h"
 #include "ixgbe_type.h"
 #include "ixgbe_common.h"
 #include "ixgbe_82599.h"
@@ -831,6 +831,11 @@ static void uio_ixgbe_populate_info(struct uio_ixgbe_udapter *ud, struct uio_ixg
         memcpy(info->mac_addr, hw->mac.perm_addr, ETH_ALEN);
         info->mac_type = hw->mac.type;
         info->phy_type = hw->phy.type;
+
+	info->num_rx_queues = ud->num_rx_queues;
+	info->num_tx_queues = ud->num_tx_queues;
+	info->max_rx_queues = hw->mac.max_rx_queues;
+	info->max_tx_queues = hw->mac.max_tx_queues;
 }
 
 static int uio_ixgbe_cmd_info(struct file *file, void __user *argp)

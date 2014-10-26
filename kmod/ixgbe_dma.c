@@ -14,7 +14,7 @@
 #include <linux/file.h>
 #include <asm/io.h>
 
-#include "uio_ixgbe.h"
+#include "ixgbe_uio.h"
 #include "ixgbe_type.h"
 #include "ixgbe_dma.h"
 

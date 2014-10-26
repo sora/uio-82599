@@ -23,7 +23,7 @@
 #include "ixgbe_type.h"
 #include "ixgbe_common.h"
 #include "ixgbe_eeprom.h"
-#include "uio_ixgbe.h"
+#include "ixgbe_uio.h"
 
 static s32 ixgbe_acquire_eeprom(struct ixgbe_hw *hw);
 static s32 ixgbe_ready_eeprom(struct ixgbe_hw *hw);

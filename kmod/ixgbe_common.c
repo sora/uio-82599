@@ -24,7 +24,7 @@
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
 #include "ixgbe_eeprom.h"
-#include "uio_ixgbe.h"
+#include "ixgbe_uio.h"
 
 static s32 ixgbe_setup_fc(struct ixgbe_hw *hw);
 static u32 ixgbe_pcie_timeout_poll(struct ixgbe_hw *hw);

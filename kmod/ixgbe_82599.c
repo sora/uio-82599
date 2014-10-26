@@ -25,7 +25,7 @@
 #include "ixgbe_common.h"
 #include "ixgbe_phy.h"
 #include "ixgbe_eeprom.h"
-#include "uio_ixgbe.h"
+#include "ixgbe_uio.h"
 
 static s32 ixgbe_read_eeprom_82599(struct ixgbe_hw *hw, u16 offset, u16 *data);
 static s32 ixgbe_verify_fw_version_82599(struct ixgbe_hw *hw);
