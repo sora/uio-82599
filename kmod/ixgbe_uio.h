@@ -50,9 +50,7 @@ struct uio_ixgbe_udapter {
 	uint16_t		link_duplex;
 
 	wait_queue_head_t	read_wait;
-
-	uint32_t		num_rx_queues;
-	uint32_t		num_tx_queues;
+	uint32_t		num_queues;
 
 	uint32_t		eicr;
 };
@@ -73,10 +71,8 @@ struct uio_ixgbe_info {
         uint8_t		mac_addr[ETH_ALEN];
         uint16_t	phy_type;
 
-	uint32_t	num_rx_queues;
-	uint32_t	num_tx_queues;
-	uint32_t	max_rx_queues;
-	uint32_t	max_tx_queues;
+	uint32_t	num_queues;
+	uint32_t	max_queues;
 	uint32_t	max_msix_vectors;
 };
 

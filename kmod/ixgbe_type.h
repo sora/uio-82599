@@ -930,8 +930,8 @@ struct ixgbe_mac_info {
         u32 num_rar_entries;
         u32 rar_highwater;
         u32 rx_pb_size;
-        u32 max_tx_queues;
         u32 max_rx_queues;
+	u32 max_tx_queues;
         u32 orig_autoc;
         u8  san_mac_rar_index;
         bool get_link_status;
