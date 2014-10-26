@@ -77,6 +77,7 @@ struct uio_ixgbe_info {
 	uint32_t	num_tx_queues;
 	uint32_t	max_rx_queues;
 	uint32_t	max_tx_queues;
+	uint32_t	max_msix_vectors;
 };
 
 #define UIO_IXGBE_INFO       _IOW('E', 201, int)

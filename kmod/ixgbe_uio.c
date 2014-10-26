@@ -877,6 +877,7 @@ static void uio_ixgbe_populate_info(struct uio_ixgbe_udapter *ud, struct uio_ixg
 	info->num_tx_queues = ud->num_tx_queues;
 	info->max_rx_queues = hw->mac.max_rx_queues;
 	info->max_tx_queues = hw->mac.max_tx_queues;
+	info->max_msix_vectors = hw->mac.max_msix_vectors;
 }
 
 static int uio_ixgbe_cmd_info(struct file *file, void __user *argp)
