@@ -49,11 +49,12 @@ struct uio_ixgbe_udapter {
 	uint16_t		link_speed;
 	uint16_t		link_duplex;
 
-	uint32_t		eicr;
 	wait_queue_head_t	read_wait;
 
 	uint32_t		num_rx_queues;
 	uint32_t		num_tx_queues;
+
+	uint32_t		eicr;
 };
 
 /* Ioctl defines */

@@ -45,6 +45,8 @@ static void uio_ixgbe_populate_info(struct uio_ixgbe_udapter *ud, struct uio_ixg
 static int uio_ixgbe_cmd_malloc(struct uio_ixgbe_udapter *ud, void __user *argp);
 static int uio_ixgbe_cmd_mfree(struct uio_ixgbe_udapter *ud, void __user *argp);
 void uio_ixgbe_reset(struct uio_ixgbe_udapter *ud);
+static irqreturn_t uio_ixgbe_interrupt_tx(int irq, void *data);
+static irqreturn_t uio_ixgbe_interrupt_rx(int irq, void *data);
 
 u16 ixgbe_read_pci_cfg_word(struct ixgbe_hw *hw, u32 reg){
         struct uio_ixgbe_udapter *ud = hw->back;
@@ -247,7 +249,7 @@ static int uio_ixgbe_probe(struct pci_dev *pdev, const struct pci_device_id *ent
 	pci_save_state(pdev);
 
 	ud->iobase = pci_resource_start(pdev, 0);
-	ud->iolen  = pci_resource_len(pdev,   0);
+	ud->iolen  = pci_resource_len(pdev, 0);
 
 	if(pci_using_dac){
 		ud->dma_mask = DMA_BIT_MASK(64);
@@ -422,11 +424,7 @@ static void uio_ixgbe_io_resume(struct pci_dev *pdev)
         return;
 }
 
-/*
- * Interrupt handler.
- * MSI-X mode is not supported.
- */
-static irqreturn_t uio_ixgbe_interrupt(int irq, void *data)
+static irqreturn_t uio_ixgbe_interrupt_tx(int irq, void *data)
 {
 	struct uio_ixgbe_udapter *ud = data;
 	struct ixgbe_hw *hw = ud->hw;
@@ -434,7 +432,7 @@ static irqreturn_t uio_ixgbe_interrupt(int irq, void *data)
 
 	eicr = IXGBE_READ_REG(hw, IXGBE_EICR);
 	if (unlikely(!eicr))
-		return IRQ_NONE;  /* Not our interrupt */
+		return IRQ_NONE; /* Not our interrupt */
 
 	(void) xchg(&ud->eicr, eicr);
 
@@ -445,6 +443,27 @@ static irqreturn_t uio_ixgbe_interrupt(int irq, void *data)
 
 	wake_up_interruptible(&ud->read_wait);
 	return IRQ_HANDLED;
+}
+
+static irqreturn_t uio_ixgbe_interrupt_rx(int irq, void *data)
+{
+        struct uio_ixgbe_udapter *ud = data;
+        struct ixgbe_hw *hw = ud->hw;
+	uint32_t eicr;
+
+	eicr = IXGBE_READ_REG(hw, IXGBE_EICR);
+	if (unlikely(!eicr))
+		return IRQ_NONE; /* Not our interrupt */
+
+	(void) xchg(&ud->eicr, eicr);
+
+        /*
+         * We setup EIAM such that interrupts are auto-masked (disabled).
+         * User-space will re-enable them.
+         */
+
+        wake_up_interruptible(&ud->read_wait);
+        return IRQ_HANDLED;
 }
 
 void uio_ixgbe_write_eitr(struct uio_ixgbe_udapter *ud, int vector){
@@ -472,49 +491,68 @@ static void uio_ixgbe_set_ivar(struct uio_ixgbe_udapter *ud, s8 direction, u8 qu
         IXGBE_WRITE_REG(hw, IXGBE_IVAR(queue >> 1), ivar);
 }
 
-static void uio_ixgbe_configure_msix(struct uio_ixgbe_udapter *ud){
-	int vector, v_budget, err;
+static int uio_ixgbe_configure_msix(struct uio_ixgbe_udapter *ud){
+	int vector, vector_num, queue_idx, err;
 	struct ixgbe_hw *hw = ud->hw;
 
-	v_budget = min_t(int, MIN_MSIX_Q_VECTORS, hw->mac.max_msix_vectors);
-	ud->msix_entries = kcalloc(v_budget, sizeof(struct msix_entry), GFP_KERNEL);
-	err = v_budget;
-
-        if (!ud->msix_entries) {
-		/* should return immediately */
+	vector_num = ud->num_tx_queues + ud->num_rx_queues;
+	if(vector_num > hw->mac.max_msix_vectors){
+		return -1;
 	}
 
-        for (vector = 0; vector < v_budget; vector++){
+	ud->msix_entries = kcalloc(vector_num, sizeof(struct msix_entry), GFP_KERNEL);
+
+	if (!ud->msix_entries) {
+		return -1;
+	}
+
+        for (vector = 0; vector < vector_num; vector++){
                 ud->msix_entries[vector].entry = vector;
 	}
 
+	err = vector_num;
 	while (err){
 		/* err == number of vectors we should try again with */ 
               	err = pci_enable_msix(ud->pdev, ud->msix_entries, err);
 
 		if(err < 0){
-                       	/* Nasty failure */
-			v_budget = 0;
-			break;
+                       	/* failed to allocate enough msix vector */
+			return -1;
                	}
         }
 
-	ud->num_q_vectors = v_budget;
+	vector = 0;
 
-	for (vector = 0; vector < ud->num_q_vectors; vector++){
+	for(queue_idx = 0; queue_idx < ud->num_rx_queues; queue_idx++){
 		struct msix_entry *entry = &ud->msix_entries[vector];
-                err = request_irq(entry->vector, &uio_ixgbe_interrupt, 0, pci_name(ud->pdev), ud);
+                err = request_irq(entry->vector, &uio_ixgbe_interrupt_rx,
+				0, pci_name(ud->pdev), ud);
 		if(err){
-			/* should return immediately */
+			return -1;
 		}
 
-		uio_ixgbe_set_ivar(ud, 0, 0, entry->vector);
-		uio_ixgbe_set_ivar(ud, 1, 0, entry->vector);
-
+		uio_ixgbe_set_ivar(ud, 1, queue_idx, entry->vector);
 		uio_ixgbe_write_eitr(ud, entry->vector);
+
+		vector++;
 	}
 
-	return;
+	for(queue_idx = 0; queue_idx < ud->num_tx_queues; queue_idx++){
+		struct msix_entry *entry = &ud->msix_entries[vector];
+		err = request_irq(entry->vector, &uio_ixgbe_interrupt_tx,
+				0, pci_name(ud->pdev), ud);
+		if(err){
+			return -1;
+		}
+
+		uio_ixgbe_set_ivar(ud, 0, queue_idx, entry->vector);
+		uio_ixgbe_write_eitr(ud, entry->vector);
+
+		vector++;
+	}
+
+	ud->num_q_vectors = vector_num;
+	return 0;
 }
 
 static void uio_ixgbe_setup_gpie(struct uio_ixgbe_udapter *ud){
