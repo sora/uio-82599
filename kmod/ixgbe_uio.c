@@ -614,8 +614,8 @@ static int uio_ixgbe_cmd_up(struct uio_ixgbe_udapter *ud, void __user *argp){
 		return -EFAULT;
 
 	IXGBE_DBG("open req\n");
-	ud->num_rx_queues = req.num_rx_queues;
-	ud->num_tx_queues = req.num_tx_queues;
+	ud->num_rx_queues = req.info.num_rx_queues;
+	ud->num_tx_queues = req.info.num_tx_queues;
 
         err = uio_ixgbe_up(ud);
         if (err){

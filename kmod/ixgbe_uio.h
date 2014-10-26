@@ -87,8 +87,6 @@ struct uio_ixgbe_info_req {
 
 #define UIO_IXGBE_UP       _IOW('E', 202, int)
 struct uio_ixgbe_up_req {
-	uint32_t	num_rx_queues;
-	uint32_t	num_tx_queues;
 	struct uio_ixgbe_info info;
 };
 
