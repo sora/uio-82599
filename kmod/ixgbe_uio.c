@@ -591,11 +591,16 @@ static int uio_ixgbe_up(struct uio_ixgbe_udapter *ud){
 	uio_ixgbe_configure_msix(ud);
 
 	/* enable the optics for 82599 SFP+ fiber */
-	if (hw->mac.ops.enable_tx_laser)
+	if (hw->mac.ops.enable_tx_laser){
 		hw->mac.ops.enable_tx_laser(hw);
+		pr_info("enabled tx laser\n");
+	}
 
-	if (hw->mac.ops.setup_link)
+	if (hw->mac.ops.setup_link){
+		pr_info("\n");
 		hw->mac.ops.setup_link(hw, IXGBE_LINK_SPEED_10GB_FULL, true);
+		pr_info("link setup complete\n");
+	}
 
 	/* clear any pending interrupts, may auto mask */
 	IXGBE_READ_REG(hw, IXGBE_EICR);

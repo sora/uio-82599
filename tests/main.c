@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 	if(!handle)
 		return -1;
 
-	sleep(10);
+	sleep(30);
 
 	ixgbe_close(handle);
 
