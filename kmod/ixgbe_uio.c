@@ -597,7 +597,6 @@ static int uio_ixgbe_up(struct uio_ixgbe_udapter *ud){
 	}
 
 	if (hw->mac.ops.setup_link){
-		pr_info("\n");
 		hw->mac.ops.setup_link(hw, IXGBE_LINK_SPEED_10GB_FULL, true);
 		pr_info("link setup complete\n");
 	}
