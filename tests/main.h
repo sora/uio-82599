@@ -12,10 +12,6 @@ struct ixgbe_handle {
 };
 
 /* Ioctl defines */
-#define UIO_IXGBE_BIND       _IOW('E', 200, int)
-struct uio_ixgbe_bind_req {
-	char      name[20];
-};
 
 /* MAC and PHY info */
 struct uio_ixgbe_info {
@@ -33,12 +29,10 @@ struct uio_ixgbe_info {
 
 #define UIO_IXGBE_INFO       _IOW('E', 201, int)
 struct uio_ixgbe_info_req {
-	char              name[20];
 	struct uio_ixgbe_info info;
 };
 
-#define UIO_IXGBE_OPEN       _IOW('E', 202, int)
-struct uio_ixgbe_open_req {
-	uint32_t          uio_dma_devid;
+#define UIO_IXGBE_UP       _IOW('E', 202, int)
+struct uio_ixgbe_up_req {
 	struct uio_ixgbe_info info;
 };
