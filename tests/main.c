@@ -27,6 +27,8 @@ int main(int argc, char **argv)
 	if(!handle)
 		return -1;
 
+	sleep(5);
+
 	ixgbe_close(handle);
 
 	return 0;
@@ -44,7 +46,7 @@ struct ixgbe_handle *ixgbe_open()
 		return NULL;
 	memset(ih, 0, sizeof(struct ixgbe_handle));
 
-	ih->fd = open("/dev/ixgbe0", O_RDWR);
+	ih->fd = open("/dev/ixgbe2", O_RDWR);
 	if (ih->fd < 0)
 		goto failed;
 

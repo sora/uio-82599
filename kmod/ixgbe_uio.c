@@ -126,17 +126,15 @@ static struct uio_ixgbe_udapter *uio_ixgbe_udapter_alloc(void)
 {
 	struct uio_ixgbe_udapter *ud;
 
-	ud = kmalloc(sizeof(struct uio_ixgbe_udapter), GFP_KERNEL);
+	ud = kzalloc(sizeof(struct uio_ixgbe_udapter), GFP_KERNEL);
 	if (!ud){
 		return NULL;
 	}
-	memset(ud, 0, sizeof(struct uio_ixgbe_udapter));
 
-	ud->hw = kmalloc(sizeof(struct ixgbe_hw), GFP_KERNEL);
+	ud->hw = kzalloc(sizeof(struct ixgbe_hw), GFP_KERNEL);
 	if(!ud->hw){
 		return NULL;
 	}
-	memset(ud->hw, 0, sizeof(struct ixgbe_hw));
 
 	atomic_set(&ud->refcount, 1);
 
@@ -509,6 +507,7 @@ static int uio_ixgbe_configure_msix(struct uio_ixgbe_udapter *ud){
 	if(vector_num > hw->mac.max_msix_vectors){
 		return -1;
 	}
+	pr_info("required vector num = %d\n", vector_num);
 
 	ud->msix_entries = kcalloc(vector_num, sizeof(struct msix_entry), GFP_KERNEL);
 	if (!ud->msix_entries) {
@@ -691,6 +690,13 @@ static int uio_ixgbe_down(struct uio_ixgbe_udapter *ud){
 		struct msix_entry *entry = &ud->msix_entries[vector];
 		free_irq(entry->vector, ud);
 	}
+
+	pci_disable_msix(ud->pdev);
+	kfree(ud->msix_entries);
+	ud->msix_entries = NULL;
+	ud->num_rx_queues = 0;
+	ud->num_tx_queues = 0;
+	ud->num_q_vectors = 0;
 
 	uio_ixgbe_release_hw_control(ud);
 	ud->up = 0;
