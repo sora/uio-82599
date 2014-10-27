@@ -5,6 +5,10 @@
 #include <linux/types.h>
 #include <asm/page.h>
 
+/* common prefix used by pr_<> macros */
+#undef pr_fmt
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+
 #define DEBUG
 #ifdef DEBUG
 #define IXGBE_DBG(args...) printk(KERN_DEBUG "uio-ixgbe: " args)
