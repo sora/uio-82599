@@ -5,9 +5,9 @@ void ixgbe_dma_mfree_all(struct uio_ixgbe_udapter *ud);
 struct ixgbe_dma_area *ixgbe_dma_area_lookup(struct uio_ixgbe_udapter *ud, uint64_t offset);
 
 enum {
-        IXGBE_DMA_CACHE_DEFAULT = 0,
-        IXGBE_DMA_CACHE_DISABLE,
-        IXGBE_DMA_CACHE_WRITECOMBINE
+	IXGBE_DMA_CACHE_DEFAULT = 0,
+	IXGBE_DMA_CACHE_DISABLE,
+	IXGBE_DMA_CACHE_WRITECOMBINE
 };
 
 struct ixgbe_dma_area {
