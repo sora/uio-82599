@@ -6,74 +6,84 @@
 #include <syslog.h>
 #include <signal.h>
 #include <errno.h>
+#include <stdint.h>
 
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/mman.h>
 #include <sys/user.h>
+#include <sys/types.h>
 
-int main()
+#include <net/ethernet.h>
+
+#include "main.h"
+
+int main(int argc, char **argv)
 {
 	struct ixgbe_handle *handle;
 
 	handle = ixgbe_open();
+	if(!handle)
+		return -1;
+
 	ixgbe_close(handle);
+
+	return 0;
 }
 
 struct ixgbe_handle *ixgbe_open()
 {
 	struct uio_ixgbe_info_req req_info;
 	struct uio_ixgbe_up_req req_up;
-	struct ixgbe_handle *handle;
-	void *bar;
+	struct ixgbe_handle *ih;
 	int err;
 
-	handle = malloc(sizeof(struct ixgbe_handle));
-	if (!handle)
+	ih = malloc(sizeof(struct ixgbe_handle));
+	if (!ih)
 		return NULL;
-	memset(handle, 0, sizeof(struct ixgbe_handle));
+	memset(ih, 0, sizeof(struct ixgbe_handle));
 
-	h->fd = open("/dev/ixgbe0", O_RDWR);
-	if (h->fd < 0)
+	ih->fd = open("/dev/ixgbe0", O_RDWR);
+	if (ih->fd < 0)
 		goto failed;
 
 	/* Get device information */
 	memset(&req_info, 0, sizeof(struct uio_ixgbe_info_req));
-	if(ioctl(h->fd, UIO_IXGBE_INFO, (unsigned long(&req_info)) < 0)
+	if(ioctl(ih->fd, UIO_IXGBE_INFO, (unsigned long)&req_info) < 0)
 		goto failed;
 
 	/* UP the device */
 	memset(&req_up, 0, sizeof(struct uio_ixgbe_up_req));
 	req_up.info.num_rx_queues = req_info.info.max_rx_queues;
 	req_up.info.num_tx_queues = req_info.info.max_tx_queues;
-	if(ioctl(h->fd, UIO_IXGBE_UP, (unsigned long)&req_up) < 0)
+	if(ioctl(ih->fd, UIO_IXGBE_UP, (unsigned long)&req_up) < 0)
 		goto failed;
 
-	h->info = req_up.info;
+	ih->info = req_up.info;
 
 	/* Map PCI config register space */
-	h->bar = mmap(NULL, h->info.mmio_size, PROT_READ | PROT_WRITE, MAP_SHARED, h->fd, 0);
-	if(h->bar == MAP_FAILED)
+	ih->bar = mmap(NULL, ih->info.mmio_size, PROT_READ | PROT_WRITE, MAP_SHARED, ih->fd, 0);
+	if(ih->bar == MAP_FAILED)
 		goto failed;
 
-	h->bar_size = req_up.info.mmio_size;
+	ih->bar_size = req_up.info.mmio_size;
 
-	return h;
+	return ih;
 
 failed:
 	err = errno;
-	if (h->mmio_addr)
-		munmap(h->mmio_addr, h->mmio_size);
-	close(h->fd);
-	free(h);
+	if (ih->bar)
+		munmap(ih->bar, ih->bar_size);
+	close(ih->fd);
+	free(ih);
 	errno = err;
 	return NULL;
 }
 
-void ixgbe_close(struct ixgbe_handle *h)
+void ixgbe_close(struct ixgbe_handle *ih)
 {
-	munmap(h->bar, h->bar_size);
-	close(h->fd);
-	free(h);
+	munmap(ih->bar, ih->bar_size);
+	close(ih->fd);
+	free(ih);
 }
