@@ -1,5 +1,7 @@
 struct ixgbe_handle {
  	int             fd;
+	void		*bar;
+	uint32_t	bar_size;
 
 	struct ixgbe_ring tx_ring[IXGBE_MAX_TX_QUEUES];
 	struct ixgbe_ring rx_ring[IXGBE_MAX_RX_QUEUES];
@@ -36,3 +38,6 @@ struct uio_ixgbe_info_req {
 struct uio_ixgbe_up_req {
 	struct uio_ixgbe_info info;
 };
+
+struct ixgbe_handle *ixgbe_open();
+void ixgbe_close(struct ixgbe_handle *h);
